@@ -18,8 +18,8 @@ interface ExtractionResult {
 const API_URL = "http://127.0.0.1:8000/v1/translate-image";
 const TEST_PAGE_URL = "http://127.0.0.1:4173/test-page/";
 
-async function runExtractor(page: Page): Promise<ExtractionResult> {
-  await page.goto(TEST_PAGE_URL);
+async function runExtractor(page: Page, url = TEST_PAGE_URL): Promise<ExtractionResult> {
+  await page.goto(url);
   await page.waitForFunction(() => Array.from(document.images).every((image) => image.complete));
   await page.evaluate(() => {
     Reflect.set(window, "completion", (value: unknown) => {
@@ -34,6 +34,37 @@ async function runExtractor(page: Page): Promise<ExtractionResult> {
   }
   return JSON.parse(serialized) as ExtractionResult;
 }
+
+test("debug mode reports the real test page candidates and rejection reasons", async ({ page }) => {
+  const extraction = (await runExtractor(
+    page,
+    `${TEST_PAGE_URL}?penguin-debug=1`,
+  )) as ExtractionResult & {
+    debug: {
+      document_ready_state: string;
+      total_images: number;
+      accepted_images: number;
+      rejected: Array<{ id: string | null; reasons: string[] }>;
+    };
+  };
+
+  expect(extraction.debug).toMatchObject({
+    document_ready_state: "complete",
+    total_images: 4,
+    accepted_images: 3,
+  });
+  expect(extraction.debug.rejected).toEqual([
+    expect.objectContaining({
+      id: "small-image",
+      reasons: [
+        "NATURAL_WIDTH_BELOW_MINIMUM",
+        "NATURAL_HEIGHT_BELOW_MINIMUM",
+        "RENDERED_WIDTH_BELOW_MINIMUM",
+        "RENDERED_HEIGHT_BELOW_MINIMUM",
+      ],
+    }),
+  ]);
+});
 
 function requestBody(extraction: ExtractionResult, image: ExtractedImage, index: number) {
   return {

@@ -1,6 +1,10 @@
 import type { components } from "@penguin-translator/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { collectVisibleImages, normalizeRenderedDimension } from "../src/extractor/collect-images";
+import {
+  collectVisibleImages,
+  collectVisibleImagesWithDiagnostics,
+  normalizeRenderedDimension,
+} from "../src/extractor/collect-images";
 import { IMAGE_ID_ATTRIBUTE } from "../src/shared/image-identity";
 
 type ApiImageSource = components["schemas"]["ImageSource"];
@@ -24,12 +28,14 @@ function addImage({
   currentSrc = src,
   naturalWidth = 800,
   naturalHeight = 1200,
+  complete = true,
   bounds = rect(400, 600),
 }: {
   src?: string;
   currentSrc?: string;
   naturalWidth?: number;
   naturalHeight?: number;
+  complete?: boolean;
   bounds?: DOMRect;
 } = {}): HTMLImageElement {
   const image = document.createElement("img");
@@ -38,6 +44,7 @@ function addImage({
     currentSrc: { configurable: true, value: currentSrc },
     naturalWidth: { configurable: true, value: naturalWidth },
     naturalHeight: { configurable: true, value: naturalHeight },
+    complete: { configurable: true, value: complete },
   });
   vi.spyOn(image, "getBoundingClientRect").mockReturnValue(bounds);
   document.body.append(image);
@@ -78,12 +85,105 @@ describe("collectVisibleImages", () => {
     expect(collectVisibleImages()[0]?.source).toBe("https://cdn.example.com/responsive.webp");
   });
 
-  it("rejects images outside the viewport or below either size threshold", () => {
+  it("rejects images outside the viewport", () => {
     addImage({ bounds: rect(400, 600, window.innerHeight + 1) });
-    addImage({ bounds: rect(99, 600) });
-    addImage({ naturalWidth: 199 });
 
     expect(collectVisibleImages()).toEqual([]);
+  });
+
+  it.each([
+    { naturalWidth: 183, naturalHeight: 274, renderedWidth: 183, renderedHeight: 274.5 },
+    { naturalWidth: 180, naturalHeight: 270, renderedWidth: 180, renderedHeight: 270 },
+  ])("accepts iPhone manga dimensions $naturalWidth x $naturalHeight when the rendered size is sufficient", ({
+    naturalWidth,
+    naturalHeight,
+    renderedWidth,
+    renderedHeight,
+  }) => {
+    addImage({
+      naturalWidth,
+      naturalHeight,
+      bounds: rect(renderedWidth, renderedHeight),
+    });
+
+    expect(collectVisibleImages()).toHaveLength(1);
+  });
+
+  it("accepts when either size group is sufficient and rejects when neither is sufficient", () => {
+    addImage({ naturalWidth: 64, naturalHeight: 64, bounds: rect(400, 600) });
+    addImage({ naturalWidth: 800, naturalHeight: 1200, bounds: rect(64, 64) });
+    const small = addImage({ naturalWidth: 64, naturalHeight: 64, bounds: rect(64, 64) });
+    small.id = "small-image";
+
+    const collection = collectVisibleImagesWithDiagnostics();
+
+    expect(collection.images).toHaveLength(2);
+    expect(collection.diagnostics.rejected).toEqual([
+      expect.objectContaining({
+        id: "small-image",
+        reasons: [
+          "NATURAL_WIDTH_BELOW_MINIMUM",
+          "NATURAL_HEIGHT_BELOW_MINIMUM",
+          "RENDERED_WIDTH_BELOW_MINIMUM",
+          "RENDERED_HEIGHT_BELOW_MINIMUM",
+        ],
+      }),
+    ]);
+  });
+
+  it("reports every measured value and rejection reason without changing filtering", () => {
+    const accepted = addImage();
+    accepted.id = "page-one";
+    const unloaded = addImage({
+      naturalWidth: 0,
+      naturalHeight: 0,
+      bounds: rect(0, 0),
+    });
+    unloaded.id = "page-two";
+    const belowViewport = addImage({ bounds: rect(400, 600, window.innerHeight + 1) });
+    belowViewport.id = "scroll-page";
+    const small = addImage({ naturalWidth: 64, naturalHeight: 64, bounds: rect(64, 64) });
+    small.id = "small-image";
+
+    const collection = collectVisibleImagesWithDiagnostics();
+
+    expect(collection.images).toHaveLength(1);
+    expect(collection.diagnostics).toMatchObject({
+      total_images: 4,
+      accepted_images: 1,
+    });
+    expect(collection.diagnostics.rejected).toEqual([
+      expect.objectContaining({
+        id: "page-two",
+        complete: true,
+        natural_width: 0,
+        natural_height: 0,
+        reasons: [
+          "NATURAL_WIDTH_BELOW_MINIMUM",
+          "NATURAL_HEIGHT_BELOW_MINIMUM",
+          "RENDERED_WIDTH_BELOW_MINIMUM",
+          "RENDERED_HEIGHT_BELOW_MINIMUM",
+          "RENDERED_WIDTH_ZERO",
+          "RENDERED_HEIGHT_ZERO",
+        ],
+      }),
+      expect.objectContaining({
+        id: "scroll-page",
+        reasons: ["OUTSIDE_VIEWPORT_BELOW"],
+      }),
+      expect.objectContaining({
+        id: "small-image",
+        natural_width: 64,
+        natural_height: 64,
+        rendered_rect: expect.objectContaining({ width: 64, height: 64 }),
+        reasons: [
+          "NATURAL_WIDTH_BELOW_MINIMUM",
+          "NATURAL_HEIGHT_BELOW_MINIMUM",
+          "RENDERED_WIDTH_BELOW_MINIMUM",
+          "RENDERED_HEIGHT_BELOW_MINIMUM",
+        ],
+      }),
+    ]);
   });
 
   it("rounds fractional CSS pixels to positive integers matching the API shape", () => {

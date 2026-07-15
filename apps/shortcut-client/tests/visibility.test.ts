@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { isElementVisible } from "../src/extractor/visibility";
+import { getVisibilityRejectionReasons, isElementVisible } from "../src/extractor/visibility";
 
 describe("isElementVisible", () => {
   it("accepts an element intersecting the viewport", () => {
@@ -34,5 +34,6 @@ describe("isElementVisible", () => {
     });
 
     expect(isElementVisible(element)).toBe(false);
+    expect(getVisibilityRejectionReasons(element)).toEqual(["OUTSIDE_VIEWPORT_BELOW"]);
   });
 });

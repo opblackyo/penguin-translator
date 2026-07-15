@@ -5,8 +5,8 @@
 ```text
 Automated Evidence: PASS
 Windows API Evidence: PASS
-iPhone Shortcut Evidence: UNVERIFIED
-Safari Overlay Evidence: UNVERIFIED
+iPhone Shortcut Evidence: PARTIALLY_VERIFIED
+Safari Overlay Evidence: PARTIALLY_VERIFIED
 Final Human Gate: PENDING
 ```
 
@@ -44,12 +44,12 @@ pnpm test:e2e
 pnpm format:check
 ```
 
-Latest counts:
+Latest counts after the iPhone extractor fix:
 
 ```text
-Frontend unit: 23 passed
+Frontend unit: 28 passed
 Backend pytest: 6 passed
-Playwright WebKit E2E: 6 passed
+Playwright WebKit E2E: 7 passed
 ```
 
 ## Windows API Evidence — PASS
@@ -60,41 +60,67 @@ Playwright WebKit E2E: 6 passed
 - `pnpm test-page:lan` serves only self-created SVG fixtures from `0.0.0.0:4173`.
 - The repository contains placeholders only and no actual Windows LAN address.
 
-This proves the Windows process and HTTP round trip. Reachability from the physical iPhone, the selected Windows network profile, and the firewall prompt remain part of the Human Gate.
+This proves the Windows process and HTTP round trip. Same-Wi-Fi reachability from the physical
+iPhone has also been observed, but the LAN address remains intentionally absent from this report.
 
-## iPhone Shortcut Evidence — UNVERIFIED
+## iPhone Shortcut Evidence — PARTIALLY VERIFIED
 
-The repository now provides a reproducible action-by-action guide in `docs/iphone-shortcut-setup.md`, using official English action names and marking Chinese names as unverified. No physical iPhone has yet confirmed:
+Physical-device observations supplied by the Owner:
 
-- Share Sheet visibility and Safari webpage input.
-- The displayed Chinese action names.
-- Same-Wi-Fi access to ports `4173` and `8000`.
+- Device: iPhone 12 Pro.
+- iOS: 26.5.
+- Safari Share Sheet starts the `企鵝翻譯機` Shortcut.
+- The Windows test page and API are reachable over the same Wi-Fi.
+- Extractor diagnostics reported `total_images = 4` and `accepted_images = 3`.
+- `page-one`, `page-two`, and `scroll-page` were accepted.
+- The 64×64 `small-image` was correctly rejected by the size rule.
+- The three accepted descriptors entered **Repeat with Each** and produced three successful
+  `/v1/translate-image` requests.
+- The displayed Chinese label `重複` has been observed for **Repeat with Each**. Other Chinese
+  action names remain `UNVERIFIED` and must not be inferred from translations.
+
+Still `UNVERIFIED` on the physical device:
+
 - Per-image `Get Contents of URL` behavior for a non-2xx response.
-- JavaScript timing and completion on the device.
+- JavaScript Timeout status and end-to-end timing.
 
-## Safari Overlay Evidence — UNVERIFIED
+## Safari Overlay Evidence — PARTIALLY VERIFIED
 
-WebKit automation verifies overlay behavior, but physical Safari has not yet confirmed:
+Physical Safari returned this renderer completion:
 
-- Region alignment on the iPhone display.
-- Overlay movement in the real test page's scroll container.
-- Show, hide, remove-all, and repeated Shortcut execution.
-- Visual legibility and absence of JavaScript timeout.
+```text
+version = 0.1.0-m0
+rendered_regions = 3
+ok = true
+warnings = []
+```
+
+Three visible `測試譯文` overlays and the Shadow DOM control panel appeared on the self-created
+test page.
+
+Still `UNVERIFIED` on the physical device:
+
+- **Hide Translations**, **Show Translations**, and **Remove All** behavior.
+- Alignment after page scrolling.
+- Alignment after scrolling the green element-scroll container.
+- Alignment after orientation change.
+- Control-panel count after running the Shortcut twice.
+- Visual legibility and absence of JavaScript Timeout.
 
 ## Failures
 
-No unresolved automated failure remains. The intentional partial-failure scenario returns one `422` and confirms that successful responses still render. Record physical-device failures here without changing an UNVERIFIED state to PASS.
+No unresolved automated failure remains. The intentional partial-failure scenario returns one `422`
+and confirms that successful responses still render. The equivalent partial-failure behavior remains
+`UNVERIFIED` on the physical device.
 
 ## Final Human Gate — PENDING
 
-The user must follow `docs/iphone-shortcut-setup.md` on an iPhone and record:
+The remaining physical checks are:
 
 | Check | Required evidence |
 | --- | --- |
-| Share Sheet starts Shortcut | iPhone model, iOS version, displayed action names |
-| Extractor output | Number of included images and excluded small image |
-| LAN API | `/healthz` and per-image response observations |
-| Safari overlay | `測試譯文`, alignment, scroll, resize/orientation observation |
+| Displayed action names | Record names shown by iOS 26.5; do not guess translations |
+| Safari overlay | Alignment after page, element-container, and orientation changes |
 | Controls | Hide, show, remove all |
 | Repeat run | One control panel only |
 | Partial failure | Other successful image remains rendered |

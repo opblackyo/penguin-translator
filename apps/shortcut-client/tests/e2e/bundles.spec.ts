@@ -25,6 +25,7 @@ test("extractor bundle completes with visible HTTP images", async ({ page }) => 
   });
   await page.evaluate(() => {
     Object.assign(window, {
+      __PENGUIN_TRANSLATOR_DEBUG__: true,
       completion: (value: unknown) => {
         Object.assign(window, { penguinResult: value });
       },
@@ -40,6 +41,7 @@ test("extractor bundle completes with visible HTTP images", async ({ page }) => 
   expect(result.images[0].rendered_height).toBe(600);
   expect(result.images[0]).not.toHaveProperty("natural_width");
   expect(result.images[0]).not.toHaveProperty("natural_height");
+  expect(result.debug).toMatchObject({ total_images: 1, accepted_images: 1, rejected: [] });
   expect(await page.locator("#page").getAttribute("data-penguin-translator-image-id")).toBe(
     result.images[0].client_image_id,
   );

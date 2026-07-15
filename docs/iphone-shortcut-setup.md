@@ -1,6 +1,10 @@
 # iPhone Shortcut Setup (M0)
 
-This guide uses Apple's official English action names. Chinese action names remain **UNVERIFIED** until they are read from the physical iPhone. Apple requires every **Run JavaScript on Web Page** action to receive the active Safari webpage, and allows extra data to be inserted into its script with Magic Variables.
+This guide uses Apple's official English action names. The Owner has observed `重複` for **Repeat
+with Each** on an iPhone 12 Pro running iOS 26.5. Other Chinese action names remain **UNVERIFIED**
+until they are read from the physical device. Apple requires every **Run JavaScript on Web Page**
+action to receive the active Safari webpage, and allows extra data to be inserted into its script with
+Magic Variables.
 
 Official references:
 
@@ -121,7 +125,10 @@ Use **Quick Look** on `Extraction` and `Images` while debugging. Remove or disab
 ## 6. POST each image
 
 1. Add **Repeat with Each** and set its input to `Images`. The current descriptor is the **Repeat Item** variable.
-2. Inside the repeat, add **Generate UUID**. If this action is not present under that exact English name on the physical device, record the displayed name and stop the Human Gate; do not guess a Chinese name.
+2. Inside the repeat, add **Generate UUID**. A fixed syntactically valid UUID may instead be used for
+   M0 because the Mock API only correlates and echoes `request_id`; it does not use the UUID for
+   authentication, authorization, or deduplication. If **Generate UUID** is not present under that exact
+   English name on the physical device, record the displayed name and do not guess a Chinese name.
 3. Add a **Dictionary** action with these entries:
 
    | Key | Value |
@@ -164,7 +171,22 @@ const shortcutInput = { results: SUCCESSFUL_RESULTS_MAGIC_VARIABLE };
 // Paste the complete apps/shortcut-client/dist/renderer.iife.js below this line.
 ```
 
-Replace `SUCCESSFUL_RESULTS_MAGIC_VARIABLE` by inserting the `Successful Results` Magic Variable directly in the JavaScript field; do not type its displayed text. Then paste the complete production renderer bundle below the first line.
+`Successful Results` is exposed by Shortcuts as separate dictionary values rather than JavaScript
+array source. Before inserting it into the JavaScript field:
+
+1. Combine the values with **Combine Text**, using a half-width comma `,` as the separator.
+2. Surround the combined text with half-width ASCII brackets `[` and `]`.
+3. Insert that result in place of `SUCCESSFUL_RESULTS_MAGIC_VARIABLE` without surrounding quotes.
+
+The result must be valid JavaScript such as:
+
+```javascript
+const shortcutInput = { results: [{"request_id":"..."},{"request_id":"..."}] };
+```
+
+Do not use the full-width characters `［` (U+FF3B) or `］` (U+FF3D). Safari treats them as invalid
+JavaScript tokens and reports a `SyntaxError`. Then paste the complete production renderer bundle
+below the first line.
 
 Apple documents that additional data can be inserted into **Run JavaScript on Web Page** with Magic Variables. The action still receives `Safari Page` as its required webpage input.
 
@@ -210,4 +232,7 @@ Common failures:
 
 ## 9. Human Gate record
 
-After the physical run, update `reports/validation/M0-shortcut-roundtrip.md` with the iPhone model, iOS version, exact displayed Chinese action names, image count, renderer completion, overlay screenshots or observations, failures, and timing. Until then, iPhone and Safari evidence remain **UNVERIFIED**.
+The confirmed device is an iPhone 12 Pro running iOS 26.5. Confirmed evidence is recorded in
+`reports/validation/M0-shortcut-roundtrip.md`. Hide/show/remove controls, page and element scrolling,
+orientation change, repeated execution, partial API failure, timeout status, timing, and all remaining
+Chinese action names stay **UNVERIFIED** until the Owner reports them.

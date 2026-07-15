@@ -2,7 +2,11 @@
 
 企鵝翻譯機是一個將 iPhone Safari 網頁漫畫圖片送往使用者自有後端，再把繁體中文譯文疊回頁面的專案。
 
-目前已完成 M0 Mock 往返的自動化實作；iPhone Safari 實機 Human Gate 仍待執行。專案尚未接上 OCR、真實翻譯服務或公開 HTTPS 入口，不應視為可產出正確漫畫翻譯的版本。
+目前已完成 M0 Mock 往返的自動化實作，並在 iPhone 12 Pro / iOS 26.5 上確認 Safari
+Share Sheet、三張圖片 extractor/API 往返、三個 Mock 譯文覆蓋與 Shadow DOM 控制列。
+控制按鈕、捲動／旋轉定位、重複執行、timeout 與部分 API 失敗仍待實機驗證，因此 Final
+Human Gate 維持 PENDING。專案尚未接上 OCR、真實翻譯服務或公開 HTTPS 入口，不應視為
+可產出正確漫畫翻譯的版本。
 
 ## 技術組合
 
