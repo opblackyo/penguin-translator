@@ -1,0 +1,2 @@
+cache-dir = ".uv-cache"
+required-version = "==0.11.14"

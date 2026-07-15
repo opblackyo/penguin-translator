@@ -1,0 +1,38 @@
+{
+  "name": "penguin-translator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "iPhone Safari manga translation overlay, beginning with an M0 shortcut round-trip prototype.",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@10.23.0",
+  "engines": {
+    "node": ">=24 <25",
+    "pnpm": ">=10.23.0 <11"
+  },
+  "scripts": {
+    "build": "pnpm --filter @penguin-translator/shortcut-client build",
+    "format": "biome check --write .",
+    "format:check": "biome check .",
+    "lint": "biome lint .",
+    "typecheck": "pnpm -r typecheck && pnpm backend:typecheck",
+    "test": "pnpm test:unit && pnpm backend:test && pnpm test:contract-roundtrip && pnpm contracts:check",
+    "test:unit": "pnpm --filter @penguin-translator/shortcut-client test",
+    "test:e2e": "pnpm --filter @penguin-translator/shortcut-client test:e2e",
+    "test:contract-roundtrip": "node scripts/test-extractor-contract.mjs",
+    "playwright:version": "pnpm --filter @penguin-translator/shortcut-client exec playwright --version",
+    "playwright:install": "pnpm --filter @penguin-translator/shortcut-client exec playwright install webkit",
+    "playwright:install:ci": "pnpm --filter @penguin-translator/shortcut-client exec playwright install --with-deps webkit",
+    "backend:sync": "uv --cache-dir .uv-cache sync --project services/api --locked",
+    "backend:lint": "uv --cache-dir .uv-cache run --project services/api ruff check services/api/src services/api/tests scripts",
+    "backend:format:check": "uv --cache-dir .uv-cache run --project services/api ruff format --check services/api/src services/api/tests scripts",
+    "backend:typecheck": "pyright --project services/api/pyrightconfig.json",
+    "backend:test": "uv --cache-dir .uv-cache run --project services/api pytest services/api/tests",
+    "contracts:export": "uv --cache-dir .uv-cache run --project services/api python scripts/export-openapi.py",
+    "contracts:generate": "pnpm --filter @penguin-translator/contracts generate",
+    "contracts:check": "uv --cache-dir .uv-cache run --project services/api python scripts/verify-generated-contracts.py"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.3",
+    "pyright": "1.1.411"
+  }
+}

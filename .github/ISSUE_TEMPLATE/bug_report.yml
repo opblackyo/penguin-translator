@@ -1,0 +1,22 @@
+name: Bug report
+description: Report a reproducible Penguin Translator defect without secrets or private images.
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety confirmation
+      description: Confirm that no token, private URL, copyrighted manga image, or OCR text is included.
+    validations:
+      required: true

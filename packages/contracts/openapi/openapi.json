@@ -1,0 +1,355 @@
+{
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "const": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": ["status"],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "ImageSource": {
+        "additionalProperties": false,
+        "properties": {
+          "client_image_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Client Image Id",
+            "type": "string"
+          },
+          "rendered_height": {
+            "exclusiveMinimum": 0.0,
+            "title": "Rendered Height",
+            "type": "integer"
+          },
+          "rendered_width": {
+            "exclusiveMinimum": 0.0,
+            "title": "Rendered Width",
+            "type": "integer"
+          },
+          "source": {
+            "format": "uri",
+            "minLength": 1,
+            "title": "Source",
+            "type": "string"
+          },
+          "source_kind": {
+            "const": "url",
+            "title": "Source Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_image_id",
+          "source_kind",
+          "source",
+          "rendered_width",
+          "rendered_height"
+        ],
+        "title": "ImageSource",
+        "type": "object"
+      },
+      "TranslationImageRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "image": {
+            "$ref": "#/components/schemas/ImageSource"
+          },
+          "page_url": {
+            "format": "uri",
+            "maxLength": 2083,
+            "minLength": 1,
+            "title": "Page Url",
+            "type": "string"
+          },
+          "reading_order": {
+            "const": "rtl",
+            "title": "Reading Order",
+            "type": "string"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "source_language": {
+            "const": "ja",
+            "title": "Source Language",
+            "type": "string"
+          },
+          "target_language": {
+            "const": "zh-Hant",
+            "title": "Target Language",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "page_url",
+          "image",
+          "source_language",
+          "target_language",
+          "reading_order"
+        ],
+        "title": "TranslationImageRequest",
+        "type": "object"
+      },
+      "TranslationImageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "client_image_id": {
+            "title": "Client Image Id",
+            "type": "string"
+          },
+          "image_height": {
+            "exclusiveMinimum": 0.0,
+            "title": "Image Height",
+            "type": "integer"
+          },
+          "image_id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Image Id",
+            "type": "string"
+          },
+          "image_width": {
+            "exclusiveMinimum": 0.0,
+            "title": "Image Width",
+            "type": "integer"
+          },
+          "regions": {
+            "items": {
+              "$ref": "#/components/schemas/TranslationRegion"
+            },
+            "title": "Regions",
+            "type": "array"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "request_id",
+          "client_image_id",
+          "image_id",
+          "image_width",
+          "image_height",
+          "regions",
+          "warnings"
+        ],
+        "title": "TranslationImageResponse",
+        "type": "object"
+      },
+      "TranslationRegion": {
+        "additionalProperties": false,
+        "properties": {
+          "detection_confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Detection Confidence",
+            "type": "number"
+          },
+          "orientation": {
+            "enum": ["vertical", "horizontal"],
+            "title": "Orientation",
+            "type": "string"
+          },
+          "polygon": {
+            "items": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "minimum": 0.0,
+                  "type": "integer"
+                },
+                {
+                  "minimum": 0.0,
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "title": "Polygon",
+            "type": "array"
+          },
+          "recognition_confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Recognition Confidence",
+            "type": "number"
+          },
+          "region_id": {
+            "minLength": 1,
+            "title": "Region Id",
+            "type": "string"
+          },
+          "source_text": {
+            "title": "Source Text",
+            "type": "string"
+          },
+          "translated_text": {
+            "title": "Translated Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_id",
+          "polygon",
+          "source_text",
+          "translated_text",
+          "orientation",
+          "detection_confidence",
+          "recognition_confidence"
+        ],
+        "title": "TranslationRegion",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": ["loc", "msg", "type"],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "bearerFormat": "opaque",
+        "description": "M0 checks only that a Bearer credential is present.",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "summary": "M0 shortcut round-trip mock API",
+    "title": "Penguin Translator API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/healthz": {
+      "get": {
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Healthz",
+        "tags": ["health"]
+      }
+    },
+    "/v1/translate-image": {
+      "post": {
+        "description": "Return a deterministic region without downloading or retaining the image.",
+        "operationId": "translate_image_v1_translate_image_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranslationImageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranslationImageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Translate Image",
+        "tags": ["translation"]
+      }
+    }
+  }
+}
