@@ -48,9 +48,24 @@ async def test_translate_image_returns_deterministic_mock_region() -> None:
     assert body.warnings == ["M0_MOCK_RESULT_NO_IMAGE_FETCH"]
 
 
-async def test_translate_image_rejects_non_https_page_url() -> None:
+async def test_translate_image_accepts_http_lan_test_page() -> None:
     request = valid_request()
-    request["page_url"] = "http://example.com/reader"
+    request["page_url"] = "http://m0-test-page.local/reader"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/v1/translate-image",
+            headers={"Authorization": "Bearer local-m0-test-value"},
+            json=request,
+        )
+
+    assert response.status_code == 200
+
+
+async def test_translate_image_rejects_non_http_page_url() -> None:
+    request = valid_request()
+    request["page_url"] = "ftp://example.com/reader"
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:

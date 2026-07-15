@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1200" viewBox="0 0 800 1200">
+  <title>Self-created M0 scroll fixture</title>
+  <rect width="800" height="1200" fill="#ecfdf5" />
+  <rect x="40" y="40" width="720" height="1120" rx="24" fill="#a7f3d0" stroke="#065f46" stroke-width="12" />
+  <path d="M120 210 C240 80 560 80 680 210 V470 C560 600 240 600 120 470 Z" fill="#d1fae5" stroke="#047857" stroke-width="12" />
+  <path d="M180 780 H620 M180 900 H620 M180 1020 H620" stroke="#047857" stroke-width="42" stroke-linecap="round" />
+  <text x="400" y="390" text-anchor="middle" font-family="sans-serif" font-size="58" fill="#064e3b">SCROLL PAGE</text>
+</svg>

@@ -76,7 +76,6 @@
           },
           "page_url": {
             "format": "uri",
-            "maxLength": 2083,
             "minLength": 1,
             "title": "Page Url",
             "type": "string"

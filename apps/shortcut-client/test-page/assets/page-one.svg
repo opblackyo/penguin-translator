@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1200" viewBox="0 0 800 1200">
+  <title>Self-created M0 fixture page one</title>
+  <rect width="800" height="1200" fill="#f8fafc" />
+  <rect x="40" y="40" width="720" height="1120" rx="24" fill="#dbeafe" stroke="#1e3a8a" stroke-width="12" />
+  <circle cx="260" cy="410" r="145" fill="#fef3c7" stroke="#92400e" stroke-width="12" />
+  <path d="M160 820 L400 610 L640 820 L520 1080 L280 1080 Z" fill="#93c5fd" stroke="#1e3a8a" stroke-width="12" />
+  <rect x="420" y="130" width="270" height="180" rx="36" fill="white" stroke="#334155" stroke-width="10" />
+  <text x="555" y="235" text-anchor="middle" font-family="sans-serif" font-size="52" fill="#0f172a">M0 PAGE 1</text>
+</svg>

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>企鵝翻譯機 M0 測試頁</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 8px;
+        background: #e2e8f0;
+        color: #0f172a;
+        font: 14px/1.35 system-ui, sans-serif;
+      }
+      header {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      h1 {
+        margin: 0;
+        font-size: 18px;
+      }
+      .small-image {
+        width: 64px;
+        height: 64px;
+      }
+      .pages {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .page-image {
+        display: block;
+        width: 100%;
+        aspect-ratio: 2 / 3;
+        border-radius: 6px;
+        background: white;
+      }
+      .scroll-reader {
+        height: 210px;
+        margin-top: 8px;
+        overflow: auto;
+        border: 3px solid #0f766e;
+        border-radius: 8px;
+        background: #ccfbf1;
+      }
+      .scroll-content {
+        min-height: 560px;
+        padding: 8px;
+      }
+      .scroll-page {
+        display: block;
+        width: 180px;
+        height: 270px;
+        margin: 0 auto;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <img
+        id="small-image"
+        class="small-image"
+        src="./assets/small-icon.svg"
+        alt="應由 extractor 排除的小圖"
+      />
+      <div>
+        <h1>企鵝翻譯機 M0 自製測試頁</h1>
+        <div>兩張一般頁面、一張捲動容器頁面，以及一張應被排除的小圖。</div>
+      </div>
+    </header>
+    <main>
+      <section class="pages" aria-label="多張測試漫畫頁">
+        <img id="page-one" class="page-image" src="./assets/page-one.svg" alt="測試頁一" />
+        <img id="page-two" class="page-image" src="./assets/page-two.svg" alt="測試頁二" />
+      </section>
+      <section id="scroll-reader" class="scroll-reader" aria-label="可捲動測試閱讀器">
+        <div class="scroll-content">
+          <img
+            id="scroll-page"
+            class="scroll-page"
+            src="./assets/scroll-page.svg"
+            alt="捲動容器測試頁"
+          />
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

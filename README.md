@@ -2,7 +2,7 @@
 
 企鵝翻譯機是一個將 iPhone Safari 網頁漫畫圖片送往使用者自有後端，再把繁體中文譯文疊回頁面的專案。
 
-目前僅建立 M0 的 Repository Bootstrap 與 Mock 往返骨架。專案尚未接上 OCR、真實翻譯服務或公開 HTTPS 入口，不應視為可產出正確漫畫翻譯的版本。
+目前已完成 M0 Mock 往返的自動化實作；iPhone Safari 實機 Human Gate 仍待執行。專案尚未接上 OCR、真實翻譯服務或公開 HTTPS 入口，不應視為可產出正確漫畫翻譯的版本。
 
 ## 技術組合
 
@@ -31,6 +31,15 @@ pnpm build
 pnpm playwright:install
 pnpm test:e2e
 ```
+
+同一 Wi-Fi 的 M0 實機測試使用兩個 PowerShell 視窗：
+
+```text
+pnpm backend:dev:lan
+pnpm test-page:lan
+```
+
+Mock API 使用 repository script 明確設定的 `8000` port，自拍 SVG 測試頁使用 `4173` port。實際 LAN IPv4 與完整 iPhone 捷徑步驟見 [`docs/iphone-shortcut-setup.md`](docs/iphone-shortcut-setup.md)，不得將實際 LAN IP 寫入 Git。
 
 ## M0 限制
 

@@ -23,7 +23,7 @@ export function ControlPanel({ onRemove }: { onRemove: () => void }) {
         {visible ? "隱藏譯文" : "顯示譯文"}
       </button>
       <button type="button" onClick={onRemove}>
-        移除
+        移除全部
       </button>
     </div>
   );

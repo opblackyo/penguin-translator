@@ -15,6 +15,7 @@ describe("ControlPanel", () => {
     render(<ControlPanel onRemove={() => undefined} />, mount);
 
     expect(shadow.querySelector(".panel")?.textContent).toContain("企鵝翻譯機");
+    expect(shadow.querySelector(".panel")?.textContent).toContain("移除全部");
     expect(document.head.querySelector("style")).toBeNull();
   });
 });

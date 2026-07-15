@@ -1,7 +1,7 @@
 from typing import Literal
 from uuid import UUID
 
-from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, HttpUrl, field_validator
+from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field
 
 
 class ImageSource(BaseModel):
@@ -18,15 +18,8 @@ class TranslationImageRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     request_id: UUID
-    page_url: HttpUrl
+    page_url: AnyHttpUrl
     image: ImageSource
     source_language: Literal["ja"]
     target_language: Literal["zh-Hant"]
     reading_order: Literal["rtl"]
-
-    @field_validator("page_url")
-    @classmethod
-    def require_https_page_url(cls, value: HttpUrl) -> HttpUrl:
-        if value.scheme != "https":
-            raise ValueError("page_url must use HTTPS")
-        return value

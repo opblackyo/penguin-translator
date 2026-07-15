@@ -5,3 +5,5 @@ M0 accepts URL strings for contract testing but does not fetch them, log them, o
 Before image downloading is added in M2, the implementation must enforce DNS and redirect validation, reject non-public address ranges, limit bytes/pixels/time/concurrency, inspect content bytes and Content-Type, and avoid URL query strings in logs.
 
 Secrets must remain in the iOS Shortcut network action or a later confirmed runtime configuration. They must never be embedded in either JavaScript bundle, fixtures, snapshots, Actions logs, or Git history.
+
+The M0 LAN commands bind ports `8000` and `4173` to all local interfaces for Private-network testing only. They do not configure TLS, a tunnel, router forwarding, or production deployment. No actual LAN address is stored in the repository.
