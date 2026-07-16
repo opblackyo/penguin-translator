@@ -71,7 +71,20 @@ interface CollectionOptions {
 interface PageScanOptions {
   maxSteps?: number;
   settleMilliseconds?: number;
+  timeBudgetMilliseconds?: number;
+  stableScanLimit?: number;
+  minimumScanSteps?: number;
+  deadlineReserveMilliseconds?: number;
+  now?: () => number;
+  wait?: (milliseconds: number) => Promise<void>;
 }
+
+export const DEFAULT_SCAN_MAX_STEPS = 8;
+export const DEFAULT_SCAN_SETTLE_MILLISECONDS = 40;
+export const DEFAULT_SCAN_TIME_BUDGET_MILLISECONDS = 2_200;
+export const DEFAULT_SCAN_STABLE_LIMIT = 2;
+export const DEFAULT_SCAN_MINIMUM_STEPS = 3;
+export const DEFAULT_SCAN_DEADLINE_RESERVE_MILLISECONDS = 100;
 
 const MIN_NATURAL_EDGE = 200;
 const MIN_RENDERED_EDGE = 100;
@@ -222,43 +235,146 @@ function waitForLazyContent(milliseconds: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
 
+function normalizedSource(image: HTMLImageElement): string {
+  const source = resolveImageSource(image);
+  return isHttpUrl(source) ? new URL(source, document.baseURI).href : source;
+}
+
+function sourceDiscoverySignature(): string {
+  return Array.from(document.images, normalizedSource).filter(Boolean).sort().join("\n");
+}
+
+function documentImageStateSignature(): string {
+  return Array.from(document.images, (image) =>
+    [
+      normalizedSource(image),
+      image.currentSrc,
+      image.getAttribute("src") ?? "",
+      image.naturalWidth,
+      image.naturalHeight,
+      image.complete ? 1 : 0,
+    ].join("|"),
+  ).join("\n");
+}
+
+function mergeDiscoveredImages(
+  target: Map<string, ExtractedImage>,
+  collection: ImageCollectionResult,
+): void {
+  for (const image of collection.images) {
+    if (!target.has(image.source)) {
+      target.set(image.source, image);
+    }
+  }
+}
+
 export async function collectPageImagesWithDiagnostics(
   options: PageScanOptions = {},
 ): Promise<ImageCollectionResult> {
-  const maxSteps = options.maxSteps ?? 24;
-  const settleMilliseconds = options.settleMilliseconds ?? 80;
+  const maxSteps = options.maxSteps ?? DEFAULT_SCAN_MAX_STEPS;
+  const settleMilliseconds = options.settleMilliseconds ?? DEFAULT_SCAN_SETTLE_MILLISECONDS;
+  const timeBudgetMilliseconds =
+    options.timeBudgetMilliseconds ?? DEFAULT_SCAN_TIME_BUDGET_MILLISECONDS;
+  const stableScanLimit = options.stableScanLimit ?? DEFAULT_SCAN_STABLE_LIMIT;
+  const minimumScanSteps = options.minimumScanSteps ?? DEFAULT_SCAN_MINIMUM_STEPS;
+  const deadlineReserveMilliseconds =
+    options.deadlineReserveMilliseconds ?? DEFAULT_SCAN_DEADLINE_RESERVE_MILLISECONDS;
+  const now = options.now ?? (() => performance.now());
+  const wait = options.wait ?? waitForLazyContent;
   const originalX = window.scrollX;
   const originalY = window.scrollY;
   const viewportHeight = Math.max(window.innerHeight, 320);
   const step = Math.max(320, Math.floor(viewportHeight * 0.8));
+  const deadline = now() + timeBudgetMilliseconds;
+  const effectiveDeadline =
+    deadline - Math.min(deadlineReserveMilliseconds, timeBudgetMilliseconds / 4);
   let maximumScroll = Math.max(0, document.documentElement.scrollHeight - viewportHeight);
   let requestedSteps = Math.ceil(maximumScroll / step) + 1;
   let scanSteps = Math.min(maxSteps, requestedSteps);
   const warnings: string[] = [];
+  const discoveredImages = new Map<string, ExtractedImage>();
+  let latestCollection = collectVisibleImagesWithDiagnostics({
+    requireViewportIntersection: false,
+  });
+  mergeDiscoveredImages(discoveredImages, latestCollection);
+  let imageStateSignature = documentImageStateSignature();
+  let discoverySignature = sourceDiscoverySignature();
+  let stableScans = 0;
+  let completedSteps = 0;
+  let timeBudgetReached = now() >= effectiveDeadline;
 
-  if (maximumScroll > 0) {
-    try {
+  const refreshCollectionWhenChanged = (): void => {
+    const nextStateSignature = documentImageStateSignature();
+    if (nextStateSignature === imageStateSignature) return;
+    imageStateSignature = nextStateSignature;
+    latestCollection = collectVisibleImagesWithDiagnostics({
+      requireViewportIntersection: false,
+    });
+    mergeDiscoveredImages(discoveredImages, latestCollection);
+  };
+
+  try {
+    if (maximumScroll > 0 && !timeBudgetReached) {
       for (let index = 0; index < scanSteps; index += 1) {
+        if (now() >= effectiveDeadline) {
+          timeBudgetReached = true;
+          break;
+        }
         maximumScroll = Math.max(0, document.documentElement.scrollHeight - viewportHeight);
         requestedSteps = Math.max(requestedSteps, Math.ceil(maximumScroll / step) + 1);
         scanSteps = Math.min(maxSteps, Math.max(scanSteps, requestedSteps));
         const top =
           scanSteps === 1 ? maximumScroll : Math.round((maximumScroll * index) / (scanSteps - 1));
         window.scrollTo(originalX, top);
-        await waitForLazyContent(settleMilliseconds);
+        completedSteps += 1;
+        refreshCollectionWhenChanged();
+
+        if (now() >= effectiveDeadline) {
+          timeBudgetReached = true;
+          break;
+        }
+        const remainingSettleBudget = Math.max(0, effectiveDeadline - now());
+        await wait(Math.min(settleMilliseconds, remainingSettleBudget));
+        refreshCollectionWhenChanged();
+
+        const nextDiscoverySignature = sourceDiscoverySignature();
+        stableScans = nextDiscoverySignature === discoverySignature ? stableScans + 1 : 0;
+        discoverySignature = nextDiscoverySignature;
+        if (completedSteps >= minimumScanSteps && stableScans >= stableScanLimit) break;
+        if (now() >= effectiveDeadline) {
+          timeBudgetReached = true;
+          break;
+        }
       }
-    } finally {
-      window.scrollTo(originalX, originalY);
     }
+  } finally {
+    window.scrollTo(originalX, originalY);
   }
 
-  if (requestedSteps > maxSteps) {
+  if (timeBudgetReached) {
+    warnings.push("LAZY_SCAN_TIME_BUDGET_REACHED");
+  }
+  if (requestedSteps > maxSteps && completedSteps >= maxSteps) {
     warnings.push("LAZY_SCAN_STEP_LIMIT_REACHED");
   }
 
-  const collection = collectVisibleImagesWithDiagnostics({ requireViewportIntersection: false });
-  collection.warnings.push(...warnings);
-  return collection;
+  const acceptedSources = new Set(discoveredImages.keys());
+  latestCollection.diagnostics.total_images = document.images.length;
+  latestCollection.diagnostics.accepted_images = discoveredImages.size;
+  latestCollection.diagnostics.rejected = latestCollection.diagnostics.rejected.filter(
+    (diagnostic) =>
+      diagnostic.reasons.includes("DUPLICATE_SOURCE") ||
+      !acceptedSources.has(
+        isHttpUrl(diagnostic.source)
+          ? new URL(diagnostic.source, document.baseURI).href
+          : diagnostic.source,
+      ),
+  );
+  return {
+    images: [...discoveredImages.values()],
+    diagnostics: latestCollection.diagnostics,
+    warnings,
+  };
 }
 
 export function collectVisibleImages(): ExtractedImage[] {

@@ -48,6 +48,53 @@ test("extractor bundle completes with visible HTTP images", async ({ page }) => 
   );
 });
 
+test("extractor bundle completes within its budget under expensive continuous scrolling", async ({
+  page,
+}) => {
+  await page.setContent(`
+    <style>body { margin: 0; min-height: 100000px; }</style>
+    <img id="base-page" src="https://example.com/base.jpg" width="400" height="600">
+  `);
+  await page.evaluate(() => {
+    let inserted = 0;
+    addEventListener(
+      "scroll",
+      () => {
+        const started = performance.now();
+        while (performance.now() - started < 260) {
+          // Simulate an expensive synchronous real-site scroll handler.
+        }
+        inserted += 1;
+        const image = document.createElement("img");
+        image.src = `https://example.com/continuous-${inserted}.jpg`;
+        image.width = 400;
+        image.height = 600;
+        document.body.append(image);
+      },
+      { passive: true },
+    );
+    const penguinStartedAt = performance.now();
+    Object.assign(window, {
+      completion: (value: unknown) => {
+        Reflect.set(window, "penguinResult", value);
+        Reflect.set(window, "penguinElapsed", performance.now() - penguinStartedAt);
+      },
+    });
+  });
+
+  await page.addScriptTag({ path: resolve("dist/extractor.iife.js") });
+  await page.waitForFunction(() => typeof Reflect.get(window, "penguinResult") === "string", null, {
+    timeout: 5_000,
+  });
+
+  const state = await page.evaluate(() => ({
+    elapsed: Reflect.get(window, "penguinElapsed"),
+    result: JSON.parse(Reflect.get(window, "penguinResult")),
+  }));
+  expect(state.elapsed).toBeLessThan(3_000);
+  expect(state.result.images.length).toBeGreaterThan(0);
+});
+
 test("renderer bundle mounts a Shadow DOM panel and survives DOM image insertion", async ({
   page,
 }) => {

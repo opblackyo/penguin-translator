@@ -335,3 +335,38 @@ Run the Shortcut again from the same Safari page: the extractor consumes that qu
 those failed descriptors, so the existing **Repeat with Each** retries only them. Reloading the page
 discards the DOM identity and queued retry. Keep heavy request concurrency at the backend default of
 two; do not issue dozens of parallel Shortcut requests.
+
+## 12. Replace and retest the deadline-bounded M2 extractor
+
+The first private real-page attempt on an iPhone 12 Pro / iOS 26.5 failed in the initial **Run
+JavaScript on Web Page** action with a completion-handler timeout. The self-created M2 long page
+remained successful, and the API, OCR, Gemini, and renderer were not reached on the failed real-page
+attempt.
+
+The remediated extractor uses these fixed defaults:
+
+```text
+maximum positions: 8
+wall-clock budget: 2200 ms
+completion reserve: 100 ms
+settle interval: 40 ms
+early stability exit: 2 consecutive scans after at least 3 positions
+```
+
+If the time budget is reached, the action returns images already discovered and includes
+`LAZY_SCAN_TIME_BUDGET_REACHED`; this is a partial success, not a JavaScript error. The original page
+position is restored before completion.
+
+For the physical retest:
+
+1. Reload the real manga page once to clear state left by the timed-out scan.
+2. Replace only the complete script in the first **Run JavaScript on Web Page** action with the new
+   `apps/shortcut-client/dist/extractor.iife.js` contents.
+3. Do not change the Bearer token, API request, `Successful Results`, `Failures`, renderer bundle,
+   `.env`, or backend for this remediation.
+4. Run the Shortcut once and inspect the extractor result before continuing.
+5. Accept either a complete result with no scan warning or a usable partial result containing
+   `LAZY_SCAN_TIME_BUDGET_REACHED`; confirm `images` is non-empty before the API phase.
+
+The physical retest must record extractor completion, elapsed behavior, image count, warnings, and
+whether API processing begins. General real-site compatibility remains **UNVERIFIED**.

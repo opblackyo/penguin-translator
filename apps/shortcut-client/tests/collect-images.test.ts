@@ -328,4 +328,78 @@ describe("collectVisibleImages", () => {
     );
     expect(collection.warnings).toContain("LAZY_SCAN_STEP_LIMIT_REACHED");
   });
+
+  it("returns partial discoveries at a hard deadline and restores the original position", async () => {
+    let clock = 0;
+    let inserted = 0;
+    const originalX = 7;
+    const originalY = 321;
+    const scrollCalls: Array<[number, number]> = [];
+    vi.spyOn(window, "scrollX", "get").mockReturnValue(originalX);
+    vi.spyOn(window, "scrollY", "get").mockReturnValue(originalY);
+    vi.spyOn(document.documentElement, "scrollHeight", "get").mockReturnValue(50_768);
+    const small = addImage({
+      currentSrc: "https://example.com/small.png",
+      naturalWidth: 64,
+      naturalHeight: 64,
+      bounds: rect(64, 64),
+    });
+    small.id = "small-image";
+    vi.spyOn(window, "scrollTo").mockImplementation((x, y) => {
+      const position: [number, number] = [Number(x), Number(y)];
+      scrollCalls.push(position);
+      if (position[0] === originalX && position[1] === originalY) return;
+      clock += 125;
+      inserted += 1;
+      addImage({ currentSrc: `https://example.com/lazy-${inserted}.png` }).id = `lazy-${inserted}`;
+    });
+
+    const collection = await collectPageImagesWithDiagnostics({
+      maxSteps: 8,
+      settleMilliseconds: 40,
+      timeBudgetMilliseconds: 200,
+      deadlineReserveMilliseconds: 20,
+      now: () => clock,
+      wait: async (milliseconds) => {
+        clock += milliseconds;
+      },
+    });
+
+    expect(collection.warnings).toContain("LAZY_SCAN_TIME_BUDGET_REACHED");
+    expect(collection.images.length).toBeGreaterThan(0);
+    expect(collection.images.length).toBeLessThan(8);
+    expect(collection.diagnostics).toMatchObject({
+      total_images: inserted + 1,
+      accepted_images: collection.images.length,
+      rejected: [expect.objectContaining({ id: "small-image" })],
+    });
+    expect(scrollCalls.at(-1)).toEqual([originalX, originalY]);
+  });
+
+  it("recalculates expanding scroll height while retaining continuous lazy insertions", async () => {
+    let heightReads = 0;
+    let inserted = 0;
+    const visited: number[] = [];
+    vi.spyOn(document.documentElement, "scrollHeight", "get").mockImplementation(() => {
+      heightReads += 1;
+      return Math.min(30_768, 2_768 + heightReads * 7_000);
+    });
+    vi.spyOn(window, "scrollTo").mockImplementation((_x, y) => {
+      const top = Number(y);
+      visited.push(top);
+      if (top === 0 && visited.length > 1) return;
+      inserted += 1;
+      addImage({ currentSrc: `https://example.com/expanding-${inserted}.png` });
+    });
+
+    const collection = await collectPageImagesWithDiagnostics({
+      maxSteps: 4,
+      settleMilliseconds: 0,
+      timeBudgetMilliseconds: 2_000,
+    });
+
+    expect(Math.max(...visited)).toBeGreaterThan(2_000);
+    expect(collection.images).toHaveLength(4);
+    expect(collection.warnings).toContain("LAZY_SCAN_STEP_LIMIT_REACHED");
+  });
 });
