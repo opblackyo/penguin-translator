@@ -6,6 +6,7 @@
       "!**/node_modules",
       "!**/.venv",
       "!**/.uv-cache",
+      "!**/.cache",
       "!**/dist",
       "!**/coverage",
       "!**/test-results",

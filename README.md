@@ -8,10 +8,15 @@ Share Sheet、三張圖片 extractor/API 往返、三個 Mock 譯文覆蓋與 Sh
 Human Gate 維持 PENDING。專案尚未接上 OCR、真實翻譯服務或公開 HTTPS 入口，不應視為
 可產出正確漫畫翻譯的版本。
 
+M1 分支正在加入一條受限的真實垂直切片：安全圖片取得、PaddleOCR 韓文／英文 scene
+OCR、Gemini structured batch translation，以及既有 renderer。一般 CI 不下載模型或呼叫外部
+API；真實 OCR 與 Gemini smoke 都是明確 opt-in。沒有 Gemini live smoke 與 iPhone 實測前，
+此路徑不視為完成 Human Gate。
+
 ## 技術組合
 
 - 注入式前端：TypeScript、Preact、Vite Library Mode、Shadow DOM
-- Mock API：Python 3.11、FastAPI、Pydantic、uv
+- API：Python 3.11、FastAPI、Pydantic、PaddleOCR、Google Gen AI SDK、uv
 - 測試：Vitest、Playwright、pytest、Ruff、Pyright
 - 契約：Pydantic Models → OpenAPI JSON → 自動產生 TypeScript
 
@@ -28,6 +33,11 @@ pnpm typecheck
 pnpm test
 pnpm build
 ```
+
+本機 M1 Gemini 設定從 Repository 根目錄的 `.env` 載入；該檔案已被 Git ignore，且
+process environment 的同名值具有較高優先權。請從 `.env.example` 複製設定並只在 `.env`
+填入真實 `GEMINI_API_KEY`。API 沒有 Key 時仍可啟動，一般測試也不會呼叫 Gemini；只有
+明確執行 `pnpm backend:test:gemini-live` 才會發出 live request。
 
 要執行 WebKit 煙霧測試，需先在本機安裝 Playwright WebKit：
 

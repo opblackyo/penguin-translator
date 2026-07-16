@@ -1,9 +1,30 @@
 # Privacy and Security
 
-M0 accepts URL strings for contract testing but does not fetch them, log them, or persist them. It has no cache, database, OCR model, translation provider, telemetry, tunnel, or deployment hostname.
+M0 accepts URL strings for contract testing but does not fetch them, log them, or persist them.
 
-Before image downloading is added in M2, the implementation must enforce DNS and redirect validation, reject non-public address ranges, limit bytes/pixels/time/concurrency, inspect content bytes and Content-Type, and avoid URL query strings in logs.
+M1 adds image downloading only on the real translation path. The downloader:
 
-Secrets must remain in the iOS Shortcut network action or a later confirmed runtime configuration. They must never be embedded in either JavaScript bundle, fixtures, snapshots, Actions logs, or Git history.
+- accepts HTTP and HTTPS without URL credentials;
+- resolves and pins the connection to a validated address;
+- rejects loopback, private, link-local, reserved, multicast, and other non-global addresses;
+- revalidates every redirect and limits redirect count;
+- limits timeout, response bytes, decoded pixels, and accepted image MIME types;
+- forwards no Shortcut Authorization, Cookie, or caller headers;
+- never logs the complete image URL or query string.
+
+Private/LAN image fetching is disabled by default. Local iPhone development requires
+`PENGUIN_TRANSLATOR_DEV_ALLOWED_IMAGE_HOSTS` to contain the exact current test-page host. This is a
+dev-only process environment exception and no actual LAN address may be committed.
+
+The Gemini credential is loaded by the API's centralized settings object. Local development reads
+the explicitly located repository-root `.env`; process environment values override `.env` for CI
+and deployment. The real `.env` is ignored and must never be tracked, while `.env.example` keeps
+`GEMINI_API_KEY` empty. The credential must never be embedded in the Shortcut, JavaScript bundles,
+fixtures, snapshots, command output, Actions logs, or Git history. Application logs contain timings
+and region counts, not URLs, image bytes, recognized source text, translated text, request
+Authorization, or API keys.
+
+M1 has no database, Redis, queue, telemetry, tunnel, public deployment, or disk persistence. A
+bounded process-memory cache stores only normalized OCR regions keyed by an image-byte hash.
 
 The M0 LAN commands bind ports `8000` and `4173` to all local interfaces for Private-network testing only. They do not configure TLS, a tunnel, router forwarding, or production deployment. No actual LAN address is stored in the repository.

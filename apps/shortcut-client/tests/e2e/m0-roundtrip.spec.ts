@@ -17,6 +17,7 @@ interface ExtractionResult {
 
 const API_URL = "http://127.0.0.1:8000/v1/translate-image";
 const TEST_PAGE_URL = "http://127.0.0.1:4173/test-page/";
+const M1_TEST_PAGE_URL = "http://127.0.0.1:4173/m1-test-page/";
 
 async function runExtractor(page: Page, url = TEST_PAGE_URL): Promise<ExtractionResult> {
   await page.goto(url);
@@ -64,6 +65,25 @@ test("debug mode reports the real test page candidates and rejection reasons", a
       ],
     }),
   ]);
+});
+
+test("extractor accepts all four self-created M1 PNG fixtures in the mobile viewport", async ({
+  page,
+}) => {
+  const extraction = (await runExtractor(
+    page,
+    `${M1_TEST_PAGE_URL}?penguin-debug=1`,
+  )) as ExtractionResult & {
+    debug: { total_images: number; accepted_images: number; rejected: unknown[] };
+  };
+
+  expect(extraction.images).toHaveLength(4);
+  expect(extraction.images.every((image) => image.source.endsWith(".png"))).toBe(true);
+  expect(extraction.debug).toMatchObject({
+    total_images: 4,
+    accepted_images: 4,
+    rejected: [],
+  });
 });
 
 function requestBody(extraction: ExtractionResult, image: ExtractedImage, index: number) {

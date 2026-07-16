@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Penguin Translator M1 fixtures</title>
+    <style>
+      :root {
+        color: #17212b;
+        background: #eef3f6;
+        font-family: system-ui, sans-serif;
+      }
+      body {
+        margin: 0 auto;
+        max-width: 52rem;
+        padding: 1rem;
+      }
+      .gallery {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+      }
+      img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border: 2px solid #607d8b;
+        background: white;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Self-created M1 OCR fixtures</h1>
+    <main class="gallery">
+      <img id="korean-dialogue" src="./assets/korean-dialogue.png" alt="Korean dialogue fixture" />
+      <img id="english-dialogue" src="./assets/english-dialogue.png" alt="English dialogue fixture" />
+      <img id="mixed-dialogue" src="./assets/mixed-dialogue.png" alt="Mixed dialogue fixture" />
+      <img id="empty-page" src="./assets/empty-page.png" alt="No-text fixture" />
+    </main>
+  </body>
+</html>

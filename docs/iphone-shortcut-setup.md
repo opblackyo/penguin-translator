@@ -236,3 +236,36 @@ The confirmed device is an iPhone 12 Pro running iOS 26.5. Confirmed evidence is
 `reports/validation/M0-shortcut-roundtrip.md`. Hide/show/remove controls, page and element scrolling,
 orientation change, repeated execution, partial API failure, timeout status, timing, and all remaining
 Chinese action names stay **UNVERIFIED** until the Owner reports them.
+
+## 10. M1 real translation retest
+
+Do not rebuild the Shortcut. After the M1 backend smoke passes, change only these two Dictionary
+values inside the existing request:
+
+```text
+source_language: auto
+reading_order: auto
+```
+
+Keep `target_language: zh-Hant`, the extractor, API URL, Repeat flow, result combination, and renderer
+unchanged. The Windows API process must receive these local environment values; placeholders are not
+literal values:
+
+```powershell
+$env:PENGUIN_TRANSLATOR_TRANSLATION_PROVIDER = "gemini"
+$env:PENGUIN_TRANSLATOR_GEMINI_MODEL = "gemini-3.1-flash-lite"
+$env:GEMINI_API_KEY = "<LOCAL_SECRET>"
+$env:PENGUIN_TRANSLATOR_DEV_ALLOWED_IMAGE_HOSTS = "<WINDOWS_LAN_IPV4>"
+$env:PADDLE_PDX_CACHE_HOME = (Resolve-Path services/api).Path + "\.cache\paddlex"
+pnpm backend:dev:lan
+```
+
+Never write the actual LAN address or API key into Git or either JavaScript bundle.
+
+For the live backend smoke, keep both LAN services running and set the fixture URL only in the local
+PowerShell process:
+
+```powershell
+$env:PENGUIN_TRANSLATOR_M1_FIXTURE_URL = "http://<WINDOWS_LAN_IPV4>:4173/m1-test-page/assets/korean-dialogue.png"
+pnpm backend:test:m1-live
+```

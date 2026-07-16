@@ -20,6 +20,6 @@ class TranslationImageRequest(BaseModel):
     request_id: UUID
     page_url: AnyHttpUrl
     image: ImageSource
-    source_language: Literal["ja"]
+    source_language: Literal["auto", "ja", "ko", "en"]
     target_language: Literal["zh-Hant"]
-    reading_order: Literal["rtl"]
+    reading_order: Literal["auto", "ltr", "rtl"]

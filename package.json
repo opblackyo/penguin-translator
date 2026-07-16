@@ -2,7 +2,7 @@
   "name": "penguin-translator",
   "version": "0.1.0",
   "private": true,
-  "description": "iPhone Safari manga translation overlay, beginning with an M0 shortcut round-trip prototype.",
+  "description": "iPhone Safari manga translation overlay with an M0 mock path and M1 OCR translation slice.",
   "license": "Apache-2.0",
   "packageManager": "pnpm@10.23.0",
   "engines": {
@@ -29,6 +29,11 @@
     "backend:format:check": "uv --cache-dir .uv-cache run --project services/api ruff format --check services/api/src services/api/tests scripts",
     "backend:typecheck": "pyright --project services/api/pyrightconfig.json",
     "backend:test": "uv --cache-dir .uv-cache run --project services/api pytest services/api/tests",
+    "backend:sync:ocr": "uv --cache-dir .uv-cache sync --project services/api --locked --extra ocr",
+    "backend:test:ocr-local": "uv --cache-dir .uv-cache run --project services/api python scripts/run_paddleocr_smoke.py",
+    "backend:test:ocr-vl-spike": "uv --cache-dir .uv-cache run --project services/api python scripts/run_paddleocr_vl_spike.py",
+    "backend:test:gemini-live": "uv --cache-dir .uv-cache run --project services/api python scripts/test_gemini_live.py",
+    "backend:test:m1-live": "uv --cache-dir .uv-cache run --project services/api python scripts/test_m1_live_roundtrip.py",
     "contracts:export": "uv --cache-dir .uv-cache run --project services/api python scripts/export-openapi.py",
     "contracts:generate": "pnpm --filter @penguin-translator/contracts generate",
     "contracts:check": "uv --cache-dir .uv-cache run --project services/api python scripts/verify-generated-contracts.py"

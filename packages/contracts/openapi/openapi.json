@@ -81,7 +81,7 @@
             "type": "string"
           },
           "reading_order": {
-            "const": "rtl",
+            "enum": ["auto", "ltr", "rtl"],
             "title": "Reading Order",
             "type": "string"
           },
@@ -91,7 +91,7 @@
             "type": "string"
           },
           "source_language": {
-            "const": "ja",
+            "enum": ["auto", "ja", "ko", "en"],
             "title": "Source Language",
             "type": "string"
           },
@@ -280,9 +280,9 @@
     }
   },
   "info": {
-    "summary": "M0 shortcut round-trip mock API",
+    "summary": "M0 mock compatibility plus M1 OCR translation vertical slice",
     "title": "Penguin Translator API",
-    "version": "0.1.0"
+    "version": "0.2.0-m1"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -307,7 +307,7 @@
     },
     "/v1/translate-image": {
       "post": {
-        "description": "Return a deterministic region without downloading or retaining the image.",
+        "description": "Preserve M0 mock requests and execute the M1 real pipeline for auto-language requests.",
         "operationId": "translate_image_v1_translate_image_post",
         "requestBody": {
           "content": {

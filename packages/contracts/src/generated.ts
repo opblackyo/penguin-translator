@@ -32,7 +32,7 @@ export interface paths {
         put?: never;
         /**
          * Translate Image
-         * @description Return a deterministic region without downloading or retaining the image.
+         * @description Preserve M0 mock requests and execute the M1 real pipeline for auto-language requests.
          */
         post: operations["translate_image_v1_translate_image_post"];
         delete?: never;
@@ -87,9 +87,9 @@ export interface components {
             page_url: string;
             /**
              * Reading Order
-             * @constant
+             * @enum {string}
              */
-            reading_order: "rtl";
+            reading_order: "auto" | "ltr" | "rtl";
             /**
              * Request Id
              * Format: uuid
@@ -97,9 +97,9 @@ export interface components {
             request_id: string;
             /**
              * Source Language
-             * @constant
+             * @enum {string}
              */
-            source_language: "ja";
+            source_language: "auto" | "ja" | "ko" | "en";
             /**
              * Target Language
              * @constant

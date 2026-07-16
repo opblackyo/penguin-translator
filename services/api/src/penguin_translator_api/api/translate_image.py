@@ -1,11 +1,22 @@
 import hashlib
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from penguin_translator_api.contracts.requests import TranslationImageRequest
 from penguin_translator_api.contracts.responses import TranslationImageResponse, TranslationRegion
+from penguin_translator_api.services.image_fetcher import (
+    ImageFetchError,
+    ImageFetchTimeoutError,
+    ImageTooLargeError,
+    UnsafeImageUrlError,
+    UnsupportedImageTypeError,
+)
+from penguin_translator_api.services.ocr import OCRProviderUnavailableError
+from penguin_translator_api.services.pipeline import InvalidImageContentError
+from penguin_translator_api.services.runtime import RuntimeServices, get_runtime_services
+from penguin_translator_api.services.translator import TranslatorConfigurationError
 
 router = APIRouter(prefix="/v1", tags=["translation"])
 bearer_scheme = HTTPBearer(
@@ -18,9 +29,33 @@ bearer_scheme = HTTPBearer(
 async def translate_image(
     request: TranslationImageRequest,
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
+    services: Annotated[RuntimeServices, Depends(get_runtime_services)],
 ) -> TranslationImageResponse:
-    """Return a deterministic region without downloading or retaining the image."""
+    """Preserve M0 mock requests and execute the M1 real pipeline for auto-language requests."""
     _ = credentials
+    if request.source_language != "ja" or request.reading_order != "rtl":
+        try:
+            return await services.translate_real(request)
+        except UnsafeImageUrlError as error:
+            raise HTTPException(status_code=400, detail={"code": error.code}) from error
+        except ImageFetchTimeoutError as error:
+            raise HTTPException(status_code=504, detail={"code": error.code}) from error
+        except ImageTooLargeError as error:
+            raise HTTPException(status_code=413, detail={"code": error.code}) from error
+        except UnsupportedImageTypeError as error:
+            raise HTTPException(status_code=415, detail={"code": error.code}) from error
+        except InvalidImageContentError as error:
+            raise HTTPException(
+                status_code=415, detail={"code": "IMAGE_CONTENT_INVALID"}
+            ) from error
+        except ImageFetchError as error:
+            raise HTTPException(status_code=502, detail={"code": error.code}) from error
+        except (OCRProviderUnavailableError, TranslatorConfigurationError) as error:
+            raise HTTPException(
+                status_code=503,
+                detail={"code": "REAL_TRANSLATION_NOT_CONFIGURED", "message": str(error)},
+            ) from error
+
     width = request.image.rendered_width
     height = request.image.rendered_height
     left = max(1, round(width * 0.15))
