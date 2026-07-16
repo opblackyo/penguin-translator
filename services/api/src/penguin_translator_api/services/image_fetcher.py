@@ -148,7 +148,7 @@ class ImageFetcher:
 
         raise ImageFetchError("Image request did not produce a response")
 
-    async def _validated_request_target(self, value: str) -> tuple[str, str, bytes | None]:
+    async def _validated_request_target(self, value: str) -> tuple[str, str, str | None]:
         parsed = urlsplit(value)
         if parsed.scheme not in {"http", "https"} or not parsed.hostname:
             raise UnsafeImageUrlError("Only HTTP(S) image URLs are allowed")
@@ -156,6 +156,10 @@ class ImageFetcher:
             raise UnsafeImageUrlError("Image URLs must not contain credentials")
 
         hostname = parsed.hostname.lower()
+        try:
+            hostname.encode("ascii")
+        except UnicodeEncodeError as error:
+            raise UnsafeImageUrlError("Image hostname must use ASCII") from error
         port = parsed.port or (443 if parsed.scheme == "https" else 80)
         try:
             addresses = await self._resolver(hostname, port)
@@ -177,5 +181,5 @@ class ImageFetcher:
 
         default_port = 443 if parsed.scheme == "https" else 80
         host_header = hostname if port == default_port else f"{hostname}:{port}"
-        sni_hostname = hostname.encode("ascii") if parsed.scheme == "https" else None
+        sni_hostname = hostname if parsed.scheme == "https" else None
         return request_url, host_header, sni_hostname

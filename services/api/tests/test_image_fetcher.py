@@ -21,6 +21,11 @@ PUBLIC_IP: IPAddress = ipaddress.ip_address("93.184.216.34")
 PRIVATE_IP: IPAddress = ipaddress.ip_address("127.0.0.1")
 
 
+class InspectableImageFetcher(ImageFetcher):
+    async def validated_target(self, value: str) -> tuple[str, str, str | None]:
+        return await self._validated_request_target(value)
+
+
 async def public_resolver(hostname: str, port: int) -> list[IPAddress]:
     _ = hostname, port
     return [PUBLIC_IP]
@@ -35,6 +40,8 @@ async def test_fetches_supported_image_through_pinned_public_address() -> None:
     async def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.host == str(PUBLIC_IP)
         assert request.headers["host"] == "images.example.com"
+        assert request.extensions["sni_hostname"] == "images.example.com"
+        assert isinstance(request.extensions["sni_hostname"], str)
         assert "authorization" not in request.headers
         assert "cookie" not in request.headers
         return httpx.Response(200, headers={"Content-Type": "image/png"}, content=b"png")
@@ -49,6 +56,39 @@ async def test_fetches_supported_image_through_pinned_public_address() -> None:
 
     assert result.content == b"png"
     assert result.content_type == "image/png"
+
+
+async def test_validated_request_target_preserves_https_sni_host_and_non_default_port() -> None:
+    fetcher = InspectableImageFetcher(make_settings(), resolver=public_resolver)
+
+    request_url, host_header, sni_hostname = await fetcher.validated_target(
+        "https://images.example.com:8443/page.png?chapter=1"
+    )
+
+    assert request_url == f"https://{PUBLIC_IP}:8443/page.png?chapter=1"
+    assert host_header == "images.example.com:8443"
+    assert sni_hostname == "images.example.com"
+    assert isinstance(sni_hostname, str)
+    assert not isinstance(sni_hostname, bytes)
+
+
+async def test_validated_http_target_has_no_sni_hostname() -> None:
+    fetcher = InspectableImageFetcher(make_settings(), resolver=public_resolver)
+
+    request_url, host_header, sni_hostname = await fetcher.validated_target(
+        "http://images.example.com/page.png"
+    )
+
+    assert request_url == f"http://{PUBLIC_IP}/page.png"
+    assert host_header == "images.example.com"
+    assert sni_hostname is None
+
+
+async def test_rejects_idn_before_transport_until_an_explicit_policy_is_added() -> None:
+    fetcher = InspectableImageFetcher(make_settings(), resolver=public_resolver)
+
+    with pytest.raises(UnsafeImageUrlError, match="ASCII"):
+        await fetcher.validated_target("https://例え.テスト/page.png")
 
 
 async def test_rejects_loopback_and_url_credentials() -> None:

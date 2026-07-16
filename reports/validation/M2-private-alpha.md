@@ -44,14 +44,15 @@ Automated Evidence: PASS
 Windows Private-Alpha Evidence: PASS
 Private LAN Test Page: PASS
 iPhone M2 First Real Page Extractor: FAIL_TIMEOUT
-API/OCR/Gemini on First Real Page Attempt: NOT_REACHED
-Extractor Timeout Remediation: AUTOMATED_PASS
-Remediated iPhone Real Page Retest: UNVERIFIED
+Extractor Timeout Remediation Physical Retest: PASS_TO_BACKEND
+Real HTTPS Image Fetch: FAIL_SNI_TYPE
+HTTPS SNI String Remediation: AUTOMATED_PASS
+Remediated Real HTTPS Image Retest: UNVERIFIED
 Intentional Partial Failure on iPhone: UNVERIFIED
-Final Status: READY_FOR_REAL_PAGE_EXTRACTOR_RETEST
+Final Status: READY_FOR_REAL_HTTPS_IMAGE_RETEST
 ```
 
-The automated gate covers 39 frontend unit tests, 47 backend tests, ten Playwright WebKit E2E
+The automated gate covers 39 frontend unit tests, 50 backend tests, ten Playwright WebKit E2E
 scenarios, generated-contract verification, static typing, formatting, lint, and production bundles.
 The WebKit suite exercises the self-created M2 long page and keeps the M0/M1 and partial-failure
 paths passing. No Gemini request or model download is part of the general gate.
@@ -73,3 +74,20 @@ restoration. Automated evidence covers expensive handlers, expanding height, con
 deadline partial success, completion, diagnostics, and a production WebKit bundle scenario. Physical
 real-page compatibility remains unverified until the updated extractor bundle is retested; this does
 not claim general compatibility with commercial sites.
+
+## First real HTTPS image-fetch finding
+
+The physical extractor remediation retest advanced past Safari extraction and reached FastAPI on the
+same iPhone. Every real HTTPS image then failed before OCR or Gemini. The traceback reached HTTPcore
+and AnyIO TLS setup and ended with `AttributeError: 'bytes' object has no attribute 'encode'`.
+
+`ImageFetcher` pinned the connection to the validated IP and correctly retained the original
+hostname for Host/SNI, but encoded the HTTPX `sni_hostname` extension to bytes. HTTPcore passes that
+extension to AnyIO as `server_hostname: str | None`; AnyIO performs its own IDNA encoding. The fix
+keeps DNS pinning, Host, SNI, redirect revalidation, SSRF policy, timeout, and byte limits unchanged,
+while passing the ASCII hostname as `str`. Non-ASCII IDNs are explicitly rejected before transport
+until an intentional IDN policy is added.
+
+Automated evidence asserts HTTPS SNI is a string at the transport boundary, HTTP has no SNI, pinned
+URLs retain resolved IPs, original Host headers and non-default ports remain correct, and IDNs fail
+safely. A physical HTTPS retry is still required; no general real-site compatibility is claimed.
