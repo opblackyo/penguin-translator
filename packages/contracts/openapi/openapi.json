@@ -169,6 +169,12 @@
       "TranslationRegion": {
         "additionalProperties": false,
         "properties": {
+          "background_style": {
+            "default": "translucent",
+            "enum": ["opaque", "translucent"],
+            "title": "Background Style",
+            "type": "string"
+          },
           "detection_confidence": {
             "maximum": 1.0,
             "minimum": 0.0,
@@ -273,7 +279,7 @@
     "securitySchemes": {
       "HTTPBearer": {
         "bearerFormat": "opaque",
-        "description": "M0 checks only that a Bearer credential is present.",
+        "description": "M0 requires presence; real translation requires the configured local token.",
         "scheme": "bearer",
         "type": "http"
       }

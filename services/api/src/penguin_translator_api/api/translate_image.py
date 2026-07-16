@@ -1,4 +1,5 @@
 import hashlib
+import secrets
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -21,8 +22,25 @@ from penguin_translator_api.services.translator import TranslatorConfigurationEr
 router = APIRouter(prefix="/v1", tags=["translation"])
 bearer_scheme = HTTPBearer(
     bearerFormat="opaque",
-    description="M0 checks only that a Bearer credential is present.",
+    description="M0 requires presence; real translation requires the configured local token.",
 )
+
+
+def _verify_real_translation_token(
+    credentials: HTTPAuthorizationCredentials, services: RuntimeServices
+) -> None:
+    configured = services.settings.local_api_token
+    if configured is None or not configured.get_secret_value():
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "LOCAL_API_TOKEN_NOT_CONFIGURED"},
+        )
+    if not secrets.compare_digest(credentials.credentials, configured.get_secret_value()):
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "LOCAL_API_TOKEN_INVALID"},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 @router.post("/translate-image", response_model=TranslationImageResponse)
@@ -32,8 +50,8 @@ async def translate_image(
     services: Annotated[RuntimeServices, Depends(get_runtime_services)],
 ) -> TranslationImageResponse:
     """Preserve M0 mock requests and execute the M1 real pipeline for auto-language requests."""
-    _ = credentials
     if request.source_language != "ja" or request.reading_order != "rtl":
+        _verify_real_translation_token(credentials, services)
         try:
             return await services.translate_real(request)
         except UnsafeImageUrlError as error:

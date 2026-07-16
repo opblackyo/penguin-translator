@@ -128,6 +128,12 @@ export interface components {
         };
         /** TranslationRegion */
         TranslationRegion: {
+            /**
+             * Background Style
+             * @default translucent
+             * @enum {string}
+             */
+            background_style: "opaque" | "translucent";
             /** Detection Confidence */
             detection_confidence: number;
             /**

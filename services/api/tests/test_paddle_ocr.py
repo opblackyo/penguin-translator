@@ -1,4 +1,5 @@
 from io import BytesIO
+from types import SimpleNamespace
 
 import pytest
 from PIL import Image
@@ -67,4 +68,43 @@ async def test_wraps_model_inference_failure_as_provider_error() -> None:
     Image.new("RGB", (16, 16), "white").save(output, format="PNG")
 
     with pytest.raises(OCRProviderUnavailableError):
+        await provider.recognize(output.getvalue(), "image/png")
+
+
+async def test_wraps_malformed_provider_output_as_provider_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_asarray(image: object) -> object:
+        return image
+
+    def fake_import(name: str) -> object:
+        if name == "numpy":
+            return SimpleNamespace(asarray=fake_asarray)
+        pytest.fail(f"Unexpected import: {name}")
+
+    class MalformedEngine:
+        def predict(self, pixels: object) -> object:
+            _ = pixels
+            return [
+                {
+                    "rec_polys": [[[0, 0], [10, 0], [10, 10], [0, 10]]],
+                    "rec_texts": ["text"],
+                    "rec_scores": ["not-a-number"],
+                }
+            ]
+
+    provider = PaddleOCRProvider(
+        language="korean",
+        detection_model="unused",
+        recognition_model="unused",
+        engine=MalformedEngine(),
+    )
+    output = BytesIO()
+    Image.new("RGB", (16, 16), "white").save(output, format="PNG")
+    monkeypatch.setattr(
+        "penguin_translator_api.services.paddle_ocr.importlib.import_module",
+        fake_import,
+    )
+
+    with pytest.raises(OCRProviderUnavailableError, match="normalization"):
         await provider.recognize(output.getvalue(), "image/png")

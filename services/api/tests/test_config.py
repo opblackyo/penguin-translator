@@ -4,7 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from penguin_translator_api.config import REPOSITORY_ENV_FILE, REPOSITORY_ROOT, Settings
+from penguin_translator_api.config import (
+    REPOSITORY_ENV_FILE,
+    REPOSITORY_ROOT,
+    ConfigurationError,
+    Settings,
+)
 
 
 def test_repository_env_file_is_anchored_to_source_location() -> None:
@@ -50,10 +55,15 @@ def test_process_environment_overrides_dotenv(
     assert settings.gemini_api_key == "process-key"
 
 
-def test_allowed_hosts_are_normalized() -> None:
+def test_allowed_targets_are_normalized_and_require_ports() -> None:
     settings = Settings.from_environment(
         None,
-        dev_allowed_image_hosts=" M1-Test.Local,example.test,m1-test.local ",
+        dev_allowed_image_targets=" M1-Test.Local:4173,example.test:8080,m1-test.local:4173 ",
     )
 
-    assert settings.dev_allowed_image_hosts == frozenset({"m1-test.local", "example.test"})
+    assert settings.dev_allowed_image_targets == frozenset(
+        {"m1-test.local:4173", "example.test:8080"}
+    )
+
+    with pytest.raises(ConfigurationError):
+        Settings.from_environment(None, dev_allowed_image_targets="missing-port.example")

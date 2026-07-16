@@ -14,6 +14,10 @@ fixture 實測：安全圖片取得、PaddleOCR、Gemini structured batch transl
 且沒有 JavaScript timeout；實機 intentional partial API failure 仍為 UNVERIFIED。這不代表公開
 部署、真實商業漫畫網站全面相容或複雜背景修補完成。
 
+M2 正在準備私人 Alpha：加入精確本機 token、`host:port` 圖片例外、統一下載錯誤、最多
+兩張重型請求並行、長頁／lazy／srcset／duplicate extractor、自製長條測試頁，以及更不透出
+原文的翻譯框與進度控制。M2 仍不包含公開部署、特定網站繞過、Extension 或 inpainting。
+
 ## 技術組合
 
 - 注入式前端：TypeScript、Preact、Vite Library Mode、Shadow DOM
@@ -39,6 +43,10 @@ pnpm build
 process environment 的同名值具有較高優先權。請從 `.env.example` 複製設定並只在 `.env`
 填入真實 `GEMINI_API_KEY`。API 沒有 Key 時仍可啟動，一般測試也不會呼叫 Gemini；只有
 明確執行 `pnpm backend:test:gemini-live` 才會發出 live request。
+
+真實翻譯另外要求 `.env` 中的 `PENGUIN_TRANSLATOR_LOCAL_API_TOKEN`；Shortcut 使用完全相同
+的本機隨機值。Private image 例外使用精確 `PENGUIN_TRANSLATOR_DEV_ALLOWED_IMAGE_TARGETS`
+`host:port` 清單，例如 `<WINDOWS_LAN_IPV4>:4173`，不得將實際值 Commit。
 
 要執行 WebKit 煙霧測試，需先在本機安裝 Playwright WebKit：
 

@@ -6,8 +6,17 @@ from uuid import uuid4
 
 import httpx
 
+from penguin_translator_api.config import Settings
+
 
 def main() -> None:
+    settings = Settings.from_environment()
+    token = settings.local_api_token
+    print(f"PENGUIN_TRANSLATOR_LOCAL_API_TOKEN configured={str(bool(token)).lower()}")
+    if token is None or not token.get_secret_value():
+        raise SystemExit(
+            "M1 live round trip was not run: local API token is not configured"
+        )
     api_url = os.getenv(
         "PENGUIN_TRANSLATOR_M1_API_URL", "http://127.0.0.1:8000/v1/translate-image"
     )
@@ -30,7 +39,7 @@ def main() -> None:
     }
     response = httpx.post(
         api_url,
-        headers={"Authorization": "Bearer m1-local-smoke"},
+        headers={"Authorization": f"Bearer {token.get_secret_value()}"},
         json=body,
         timeout=300,
     )

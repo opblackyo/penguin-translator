@@ -3,15 +3,20 @@ import { render } from "preact";
 import { toShortcutError } from "../shared/errors";
 import { findImageByClientId } from "../shared/image-identity";
 import { VERSION } from "../shared/version";
-import { CONTROL_PANEL_STYLE, ControlPanel } from "./control-panel";
+import { CONTROL_PANEL_STYLE, ControlPanel, type ProgressState } from "./control-panel";
 import { mapPolygonToDocument, type Point } from "./coordinate-mapper";
 import { type OverlayRegion, OverlayRoot } from "./overlay-root";
+import { detectRegionBackground, type RegionBackgroundMode } from "./region-style";
 
 export type TranslationResult = components["schemas"]["TranslationImageResponse"];
 
 export const ROOT_ID = "penguin-translator-overlay-root";
 export const PANEL_ID = "penguin-translator-control-host";
 export const RENDERER_CLEANUP_KEY = "__penguinTranslatorM0RendererCleanup";
+export const CANCEL_EVENT = "penguin-translator:cancel";
+export const RETRY_FAILURES_EVENT = "penguin-translator:retry-failures";
+export const CANCEL_REQUESTED_KEY = "__penguinTranslatorCancelRequested";
+export const RETRY_REQUESTED_KEY = "__penguinTranslatorRetryRequested";
 
 type Cleanup = () => void;
 
@@ -20,7 +25,31 @@ export interface MountResult {
   warnings: string[];
 }
 
-export function parseInput(input: unknown): TranslationResult[] {
+export interface RendererInput {
+  results: TranslationResult[];
+  failures: string[];
+  progress: ProgressState;
+}
+
+function nonNegativeInteger(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : fallback;
+}
+
+function normalizeProgress(value: unknown, successful: number, failed: number): ProgressState {
+  const record =
+    typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
+  const completedFallback = successful + failed;
+  const total = nonNegativeInteger(record.total, completedFallback);
+  const completed = Math.min(total, nonNegativeInteger(record.completed, completedFallback));
+  return {
+    total,
+    completed,
+    successful: Math.min(completed, nonNegativeInteger(record.successful, successful)),
+    failed: Math.min(completed, nonNegativeInteger(record.failed, failed)),
+  };
+}
+
+export function parseInput(input: unknown): RendererInput {
   const parsed = typeof input === "string" ? JSON.parse(input) : input;
   const results = Array.isArray(parsed)
     ? parsed
@@ -32,7 +61,25 @@ export function parseInput(input: unknown): TranslationResult[] {
     throw new Error("Renderer input must be a result array or an object containing results.");
   }
 
-  return results as TranslationResult[];
+  const record =
+    typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  const failureValues = Array.isArray(record.failures) ? record.failures : [];
+  const failures = failureValues
+    .map((failure) =>
+      typeof failure === "string"
+        ? failure
+        : typeof failure === "object" && failure !== null && "client_image_id" in failure
+          ? String((failure as { client_image_id: unknown }).client_image_id)
+          : "",
+    )
+    .filter(Boolean);
+  return {
+    results: results as TranslationResult[],
+    failures,
+    progress: normalizeProgress(record.progress, results.length, failures.length),
+  };
 }
 
 function activeCleanup(): Cleanup | undefined {
@@ -51,7 +98,10 @@ export function removeExisting(): void {
   document.getElementById(PANEL_ID)?.remove();
 }
 
-export function mount(results: TranslationResult[]): MountResult {
+export function mount(
+  results: TranslationResult[],
+  options: { progress?: ProgressState; failures?: string[] } = {},
+): MountResult {
   removeExisting();
 
   const overlay = document.createElement("div");
@@ -88,6 +138,10 @@ export function mount(results: TranslationResult[]): MountResult {
   let animationFrame: number | undefined;
   let resizeObserver: ResizeObserver | undefined;
   let disposed = false;
+  let textMode: "source" | "translation" = "translation";
+  const backgroundModes = new Map<string, RegionBackgroundMode>();
+  const progress = options.progress ?? normalizeProgress(undefined, results.length, 0);
+  const failures = options.failures ?? [];
 
   const draw = (): void => {
     if (disposed) {
@@ -101,19 +155,31 @@ export function mount(results: TranslationResult[]): MountResult {
         continue;
       }
       for (const region of result.regions) {
+        const key = `${result.client_image_id}:${region.region_id}`;
+        let backgroundMode = backgroundModes.get(key);
+        if (!backgroundMode) {
+          backgroundMode =
+            "background_style" in region &&
+            (region.background_style === "opaque" || region.background_style === "translucent")
+              ? region.background_style
+              : detectRegionBackground(image, region.polygon as Point[]);
+          backgroundModes.set(key, backgroundMode);
+        }
         regions.push({
-          key: `${result.client_image_id}:${region.region_id}`,
+          key,
           position: mapPolygonToDocument(
             image,
             region.polygon as Point[],
             result.image_width,
             result.image_height,
           ),
-          text: region.translated_text,
+          sourceText: region.source_text,
+          translatedText: region.translated_text,
+          backgroundMode,
         });
       }
     }
-    render(<OverlayRoot regions={regions} />, overlay);
+    render(<OverlayRoot regions={regions} textMode={textMode} />, overlay);
   };
 
   const scheduleDraw = (): void => {
@@ -152,7 +218,27 @@ export function mount(results: TranslationResult[]): MountResult {
 
   try {
     draw();
-    render(<ControlPanel onRemove={removeExisting} />, panelMount);
+    render(
+      <ControlPanel
+        onRemove={removeExisting}
+        onTextModeChange={(mode) => {
+          textMode = mode;
+          draw();
+        }}
+        onCancel={() => {
+          Reflect.set(window, CANCEL_REQUESTED_KEY, true);
+          window.dispatchEvent(new CustomEvent(CANCEL_EVENT));
+        }}
+        onRetryFailures={() => {
+          Reflect.set(window, RETRY_REQUESTED_KEY, failures);
+          window.dispatchEvent(
+            new CustomEvent(RETRY_FAILURES_EVENT, { detail: { client_image_ids: failures } }),
+          );
+        }}
+        progress={progress}
+      />,
+      panelMount,
+    );
     document.addEventListener("scroll", scheduleDraw, { capture: true, passive: true });
     window.addEventListener("scroll", scheduleDraw, { passive: true });
     window.addEventListener("resize", scheduleDraw, { passive: true });
@@ -176,12 +262,18 @@ export function mount(results: TranslationResult[]): MountResult {
 
 export function runRenderer(input: unknown, complete: (result: unknown) => void): void {
   try {
-    const result = mount(parseInput(input));
+    const parsed = parseInput(input);
+    const result = mount(parsed.results, {
+      progress: parsed.progress,
+      failures: parsed.failures,
+    });
     complete({
       ok: true,
       version: VERSION,
       rendered_regions: result.renderedRegions,
       warnings: result.warnings,
+      cancel_requested: Reflect.get(window, CANCEL_REQUESTED_KEY) === true,
+      retry_requested: Reflect.get(window, RETRY_REQUESTED_KEY) ?? [],
     });
   } catch (error) {
     complete({ ok: false, version: VERSION, errors: [toShortcutError(error)] });

@@ -139,6 +139,8 @@ class ImageFetcher:
             raise ImageFetchError(
                 f"Image server returned HTTP {error.response.status_code}"
             ) from error
+        except httpx.RequestError as error:
+            raise ImageFetchError("Image transport failed") from error
 
         raise ImageFetchError("Image request did not produce a response")
 
@@ -158,7 +160,8 @@ class ImageFetcher:
         if not addresses:
             raise UnsafeImageUrlError("Image host resolved to no addresses")
 
-        development_exception = hostname in self._settings.dev_allowed_image_hosts
+        target_host = f"[{hostname}]" if ":" in hostname else hostname
+        development_exception = f"{target_host}:{port}" in self._settings.dev_allowed_image_targets
         if not development_exception and any(not address.is_global for address in addresses):
             raise UnsafeImageUrlError("Image host resolved to a non-public address")
 

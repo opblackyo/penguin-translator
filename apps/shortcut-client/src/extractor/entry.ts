@@ -1,6 +1,6 @@
 import { toShortcutError } from "../shared/errors";
 import { VERSION } from "../shared/version";
-import { collectVisibleImagesWithDiagnostics, type ExtractionResult } from "./collect-images";
+import { collectPageImagesWithDiagnostics, type ExtractionResult } from "./collect-images";
 
 export const DEBUG_QUERY_PARAMETER = "penguin-debug";
 export const DEBUG_GLOBAL_KEY = "__PENGUIN_TRANSLATOR_DEBUG__";
@@ -12,14 +12,14 @@ export function isDebugModeEnabled(): boolean {
   );
 }
 
-function run(): void {
+async function run(): Promise<void> {
   try {
-    const collection = collectVisibleImagesWithDiagnostics();
+    const collection = await collectPageImagesWithDiagnostics();
     const result: ExtractionResult = {
       version: VERSION,
       page_url: window.location.href,
       images: collection.images,
-      warnings: [],
+      warnings: collection.warnings,
     };
     if (isDebugModeEnabled()) {
       result.debug = collection.diagnostics;
@@ -37,4 +37,4 @@ function run(): void {
   }
 }
 
-run();
+void run();

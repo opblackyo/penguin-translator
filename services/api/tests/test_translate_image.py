@@ -5,6 +5,7 @@ from httpx import ASGITransport, AsyncClient
 from penguin_translator_api.contracts.responses import TranslationImageResponse
 from penguin_translator_api.main import app
 from penguin_translator_api.services.runtime import get_runtime_services
+from tests.helpers import make_settings
 
 
 def valid_request() -> dict[str, object]:
@@ -93,6 +94,8 @@ async def test_real_request_uses_runtime_pipeline_without_rebuilding_m0_flow() -
     )
 
     class FakeRuntime:
+        settings = make_settings()
+
         async def translate_real(self, request: object) -> TranslationImageResponse:
             _ = request
             return expected
@@ -106,7 +109,7 @@ async def test_real_request_uses_runtime_pipeline_without_rebuilding_m0_flow() -
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
                 "/v1/translate-image",
-                headers={"Authorization": "Bearer local-m1-test-value"},
+                headers={"Authorization": "Bearer test-local-token"},
                 json=request,
             )
     finally:
@@ -120,15 +123,56 @@ async def test_real_request_without_runtime_configuration_is_diagnostic() -> Non
     request = valid_request()
     request["source_language"] = "auto"
     request["reading_order"] = "auto"
-    get_runtime_services.cache_clear()
 
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.post(
-            "/v1/translate-image",
-            headers={"Authorization": "Bearer local-m1-test-value"},
-            json=request,
+    class MissingConfigurationRuntime:
+        settings = make_settings(
+            local_api_token=None,
+            translation_provider=None,
+            gemini_model=None,
+            gemini_api_key=None,
         )
 
+        async def translate_real(self, request: object) -> TranslationImageResponse:
+            raise AssertionError("Token validation must happen before pipeline initialization")
+
+    app.dependency_overrides[get_runtime_services] = lambda: MissingConfigurationRuntime()
+
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/v1/translate-image",
+                headers={"Authorization": "Bearer any-value"},
+                json=request,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
     assert response.status_code == 503
-    assert response.json()["detail"]["code"] == "REAL_TRANSLATION_NOT_CONFIGURED"
+    assert response.json()["detail"]["code"] == "LOCAL_API_TOKEN_NOT_CONFIGURED"
+
+
+async def test_real_request_rejects_an_incorrect_local_token() -> None:
+    class FakeRuntime:
+        settings = make_settings()
+
+        async def translate_real(self, request: object) -> TranslationImageResponse:
+            raise AssertionError("Invalid token must be rejected before translation")
+
+    request = valid_request()
+    request["source_language"] = "auto"
+    request["reading_order"] = "auto"
+    app.dependency_overrides[get_runtime_services] = lambda: FakeRuntime()
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/v1/translate-image",
+                headers={"Authorization": "Bearer incorrect-token"},
+                json=request,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 401
+    assert response.json()["detail"]["code"] == "LOCAL_API_TOKEN_INVALID"

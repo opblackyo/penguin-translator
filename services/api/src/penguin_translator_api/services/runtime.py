@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import logging
+import os
 import time
+from collections.abc import Callable
 from functools import lru_cache
 from threading import Lock
 
@@ -17,11 +20,22 @@ from penguin_translator_api.services.pipeline import RealTranslationPipeline
 from penguin_translator_api.services.translator import TranslatorConfigurationError
 
 logger = logging.getLogger(__name__)
+PipelineFactory = Callable[[], RealTranslationPipeline]
+
+
+def apply_paddle_cache_environment(settings: Settings) -> None:
+    os.environ["PADDLE_PDX_CACHE_HOME"] = str(settings.paddle_pdx_cache_home)
 
 
 class RuntimeServices:
-    def __init__(self, settings: Settings) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        *,
+        pipeline_factory: PipelineFactory | None = None,
+    ) -> None:
         self.settings = settings
+        apply_paddle_cache_environment(settings)
         self._image_fetcher = ImageFetcher(settings)
         self._cache = OcrResultCache(
             ttl_seconds=settings.ocr_cache_ttl_seconds,
@@ -29,9 +43,13 @@ class RuntimeServices:
         )
         self._pipeline: RealTranslationPipeline | None = None
         self._pipeline_lock = Lock()
+        self._translation_slots = asyncio.Semaphore(settings.max_concurrent_translations)
+        self._pipeline_factory = pipeline_factory
 
     def _build_pipeline(self) -> RealTranslationPipeline:
         started_at = time.perf_counter()
+        if self._pipeline_factory is not None:
+            return self._pipeline_factory()
         if self.settings.ocr_provider != "paddleocr":
             raise OCRProviderUnavailableError("PENGUIN_TRANSLATOR_OCR_PROVIDER must be paddleocr")
         if self.settings.translation_provider != "gemini":
@@ -61,7 +79,8 @@ class RuntimeServices:
             with self._pipeline_lock:
                 if self._pipeline is None:
                     self._pipeline = self._build_pipeline()
-        return await self._pipeline.translate(request)
+        async with self._translation_slots:
+            return await self._pipeline.translate(request)
 
 
 @lru_cache(maxsize=1)

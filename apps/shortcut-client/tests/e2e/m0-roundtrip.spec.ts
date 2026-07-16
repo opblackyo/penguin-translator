@@ -18,6 +18,7 @@ interface ExtractionResult {
 const API_URL = "http://127.0.0.1:8000/v1/translate-image";
 const TEST_PAGE_URL = "http://127.0.0.1:4173/test-page/";
 const M1_TEST_PAGE_URL = "http://127.0.0.1:4173/m1-test-page/";
+const M2_TEST_PAGE_URL = "http://127.0.0.1:4173/m2-test-page/";
 
 async function runExtractor(page: Page, url = TEST_PAGE_URL): Promise<ExtractionResult> {
   await page.goto(url);
@@ -28,6 +29,13 @@ async function runExtractor(page: Page, url = TEST_PAGE_URL): Promise<Extraction
     });
   });
   await page.addScriptTag({ path: resolve("dist/extractor.iife.js") });
+  await page.waitForFunction(
+    () => typeof Reflect.get(window, "penguinExtraction") === "string",
+    null,
+    {
+      timeout: 15_000,
+    },
+  );
 
   const serialized = await page.evaluate(() => Reflect.get(window, "penguinExtraction"));
   if (typeof serialized !== "string") {
@@ -84,6 +92,38 @@ test("extractor accepts all four self-created M1 PNG fixtures in the mobile view
     accepted_images: 4,
     rejected: [],
   });
+});
+
+test("M2 extractor scans a long lazy page and excludes duplicates and generic assets", async ({
+  page,
+}) => {
+  const extraction = (await runExtractor(
+    page,
+    `${M2_TEST_PAGE_URL}?penguin-debug=1`,
+  )) as ExtractionResult & {
+    debug: {
+      total_images: number;
+      accepted_images: number;
+      rejected: Array<{ id: string | null; reasons: string[] }>;
+    };
+  };
+
+  expect(extraction.images).toHaveLength(4);
+  expect(extraction.images.some((image) => image.source.includes("?chapter=alpha"))).toBe(true);
+  expect(extraction.images.some((image) => image.source.includes("?lazy=true"))).toBe(true);
+  expect(extraction.images.some((image) => image.source.includes("?inserted=after-scroll"))).toBe(
+    true,
+  );
+  expect(extraction.debug).toMatchObject({ total_images: 7, accepted_images: 4 });
+  expect(extraction.debug.rejected).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ id: "duplicate-page", reasons: ["DUPLICATE_SOURCE"] }),
+      expect.objectContaining({
+        id: expect.stringMatching(/avatar|banner/),
+        reasons: expect.arrayContaining(["GENERIC_UI_ASSET_HINT"]),
+      }),
+    ]),
+  );
 });
 
 function requestBody(extraction: ExtractionResult, image: ExtractedImage, index: number) {

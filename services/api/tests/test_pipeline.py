@@ -129,6 +129,7 @@ async def test_real_pipeline_batches_regions_bounds_polygons_and_caches_ocr(
     assert len(translator.calls) == 2
     assert [item.region_id for item in translator.calls[0]] == ["ko-1"]
     assert first.regions[0].translated_text == "你好"
+    assert first.regions[0].background_style == "opaque"
     assert first.regions[0].polygon == [(0, 0), (319, 0), (319, 80), (0, 80)]
     assert first.warnings == ["OCR_LOW_CONFIDENCE:low"]
     assert second.image_id == first.image_id

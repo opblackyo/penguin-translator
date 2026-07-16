@@ -4,8 +4,9 @@ import hashlib
 import logging
 import time
 from io import BytesIO
+from typing import Literal
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageStat, UnidentifiedImageError
 
 from penguin_translator_api.config import Settings
 from penguin_translator_api.contracts.requests import TranslationImageRequest
@@ -42,6 +43,22 @@ def image_dimensions(image_bytes: bytes, *, max_pixels: int) -> tuple[int, int]:
 
 def _bounded_polygon(region: OcrRegion, width: int, height: int) -> list[tuple[int, int]]:
     return [(max(0, min(width - 1, x)), max(0, min(height - 1, y))) for x, y in region.polygon]
+
+
+def _background_style(
+    image: Image.Image, polygon: list[tuple[int, int]]
+) -> Literal["opaque", "translucent"]:
+    xs = [point[0] for point in polygon]
+    ys = [point[1] for point in polygon]
+    box = (min(xs), min(ys), max(xs) + 1, max(ys) + 1)
+    sample = image.crop(box).convert("RGB")
+    sample.thumbnail((32, 32))
+    statistics = ImageStat.Stat(sample)
+    average = statistics.mean
+    deviation = statistics.stddev
+    luminance = average[0] * 0.2126 + average[1] * 0.7152 + average[2] * 0.0722
+    maximum_deviation = max(deviation)
+    return "opaque" if luminance >= 235 and maximum_deviation <= 24 else "translucent"
 
 
 class RealTranslationPipeline:
@@ -115,19 +132,24 @@ class RealTranslationPipeline:
             translation.region_id: translation.translated_text for translation in translations
         }
 
-        response_regions = [
-            TranslationRegion(
-                region_id=region.region_id,
-                polygon=_bounded_polygon(region, width, height),
-                source_text=region.source_text,
-                translated_text=translated_by_id[region.region_id],
-                orientation=region.orientation,
-                detection_confidence=region.detection_confidence,
-                recognition_confidence=region.recognition_confidence,
-            )
-            for region in accepted
-            if region.region_id in translated_by_id
-        ]
+        with Image.open(BytesIO(fetched.content)) as source_image:
+            response_regions: list[TranslationRegion] = []
+            for region in accepted:
+                if region.region_id not in translated_by_id:
+                    continue
+                polygon = _bounded_polygon(region, width, height)
+                response_regions.append(
+                    TranslationRegion(
+                        region_id=region.region_id,
+                        polygon=polygon,
+                        source_text=region.source_text,
+                        translated_text=translated_by_id[region.region_id],
+                        orientation=region.orientation,
+                        background_style=_background_style(source_image, polygon),
+                        detection_confidence=region.detection_confidence,
+                        recognition_confidence=region.recognition_confidence,
+                    )
+                )
         total_ms = (time.perf_counter() - started_at) * 1000
         logger.info(
             "translation_timing fetch_ms=%.1f ocr_ms=%.1f translation_ms=%.1f total_ms=%.1f "

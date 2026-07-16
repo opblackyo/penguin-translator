@@ -248,19 +248,21 @@ reading_order: auto
 ```
 
 Keep `target_language: zh-Hant`, the extractor, API URL, Repeat flow, result combination, and renderer
-unchanged. The Windows API process must receive these local environment values; placeholders are not
-literal values:
+unchanged. The ignored repository-root `.env` must contain these local values; placeholders are not
+literal values and the token must be a new random local secret:
 
-```powershell
-$env:PENGUIN_TRANSLATOR_TRANSLATION_PROVIDER = "gemini"
-$env:PENGUIN_TRANSLATOR_GEMINI_MODEL = "gemini-3.1-flash-lite"
-$env:GEMINI_API_KEY = "<LOCAL_SECRET>"
-$env:PENGUIN_TRANSLATOR_DEV_ALLOWED_IMAGE_HOSTS = "<WINDOWS_LAN_IPV4>"
-$env:PADDLE_PDX_CACHE_HOME = (Resolve-Path services/api).Path + "\.cache\paddlex"
-pnpm backend:dev:lan
+```dotenv
+PENGUIN_TRANSLATOR_TRANSLATION_PROVIDER=gemini
+PENGUIN_TRANSLATOR_GEMINI_MODEL=gemini-3.1-flash-lite
+GEMINI_API_KEY=<LOCAL_SECRET>
+PENGUIN_TRANSLATOR_LOCAL_API_TOKEN=<LOCAL_RANDOM_TOKEN>
+PENGUIN_TRANSLATOR_DEV_ALLOWED_IMAGE_TARGETS=<WINDOWS_LAN_IPV4>:4173
+PADDLE_PDX_CACHE_HOME=services/api/.cache/paddlex
 ```
 
-Never write the actual LAN address or API key into Git or either JavaScript bundle.
+Replace the Shortcut's old M0 Bearer presence value with the same `<LOCAL_RANDOM_TOKEN>`, then start
+the API with `pnpm backend:dev:lan`. Never write the actual LAN address, Gemini key, or local token
+into Git or either JavaScript bundle.
 
 For the live backend smoke, keep both LAN services running and set the fixture URL only in the local
 PowerShell process:
@@ -286,3 +288,32 @@ The Owner completed this flow on an iPhone 12 Pro running iOS 26.5 with
 An intentional partial API failure has not been tested through the physical iPhone Shortcut and
 remains `UNVERIFIED`. The M1 result covers the repository's self-created fixtures over a private LAN;
 it does not claim general compatibility with real commercial manga sites or public deployment.
+
+## 11. M2 private-alpha test page
+
+Start the same API and Vite commands, then open this self-created page on the iPhone:
+
+```text
+http://<WINDOWS_LAN_IPV4>:4173/m2-test-page/
+```
+
+It contains a long webtoon image, multiple slices, `srcset/currentSrc`, a query-string URL, a lazy
+image, an image inserted after scrolling, a duplicate, an avatar, and an advertisement banner. The
+extractor performs a bounded scan and restores the original page position. The duplicate, avatar,
+and banner must not enter `images`.
+
+Renderer input may retain the existing `results` list and additionally supply:
+
+```javascript
+{
+  results: SUCCESSFUL_RESULTS,
+  failures: FAILED_CLIENT_IMAGE_IDS,
+  progress: { total, completed, successful, failed }
+}
+```
+
+The panel reports progress and provides **取消** and **重試失敗圖片**. These buttons set persistent
+page flags returned as `cancel_requested` and `retry_requested` on the next renderer invocation, so
+the Shortcut may skip later requests or run another Repeat over failed IDs. An already-running
+**Get Contents of URL** action cannot be interrupted. Keep heavy request concurrency at the default
+two; do not issue dozens of parallel Shortcut requests.

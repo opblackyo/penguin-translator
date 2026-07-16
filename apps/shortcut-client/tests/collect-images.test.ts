@@ -1,6 +1,7 @@
 import type { components } from "@penguin-translator/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  collectPageImagesWithDiagnostics,
   collectVisibleImages,
   collectVisibleImagesWithDiagnostics,
   normalizeRenderedDimension,
@@ -85,6 +86,33 @@ describe("collectVisibleImages", () => {
     expect(collectVisibleImages()[0]?.source).toBe("https://cdn.example.com/responsive.webp");
   });
 
+  it("preserves query strings and excludes duplicate sources", () => {
+    addImage({ currentSrc: "https://cdn.example.com/page.webp?chapter=12&slice=1" });
+    const duplicate = addImage({
+      currentSrc: "https://cdn.example.com/page.webp?chapter=12&slice=1",
+    });
+    duplicate.id = "duplicate-page";
+
+    const collection = collectVisibleImagesWithDiagnostics();
+
+    expect(collection.images.map((image) => image.source)).toEqual([
+      "https://cdn.example.com/page.webp?chapter=12&slice=1",
+    ]);
+    expect(collection.diagnostics.rejected).toEqual([
+      expect.objectContaining({ id: "duplicate-page", reasons: ["DUPLICATE_SOURCE"] }),
+    ]);
+  });
+
+  it("excludes generic UI assets without named-site rules", () => {
+    const avatar = addImage();
+    avatar.className = "reader-profile-avatar";
+
+    const collection = collectVisibleImagesWithDiagnostics();
+
+    expect(collection.images).toEqual([]);
+    expect(collection.diagnostics.rejected[0]?.reasons).toContain("GENERIC_UI_ASSET_HINT");
+  });
+
   it("rejects images outside the viewport", () => {
     addImage({ bounds: rect(400, 600, window.innerHeight + 1) });
 
@@ -110,8 +138,18 @@ describe("collectVisibleImages", () => {
   });
 
   it("accepts when either size group is sufficient and rejects when neither is sufficient", () => {
-    addImage({ naturalWidth: 64, naturalHeight: 64, bounds: rect(400, 600) });
-    addImage({ naturalWidth: 800, naturalHeight: 1200, bounds: rect(64, 64) });
+    addImage({
+      currentSrc: "https://example.com/rendered-large.jpg",
+      naturalWidth: 64,
+      naturalHeight: 64,
+      bounds: rect(400, 600),
+    });
+    addImage({
+      currentSrc: "https://example.com/natural-large.jpg",
+      naturalWidth: 800,
+      naturalHeight: 1200,
+      bounds: rect(64, 64),
+    });
     const small = addImage({ naturalWidth: 64, naturalHeight: 64, bounds: rect(64, 64) });
     small.id = "small-image";
 
@@ -228,5 +266,37 @@ describe("collectVisibleImages", () => {
     expect(xhrOpen).not.toHaveBeenCalled();
     expect(storageRead).not.toHaveBeenCalled();
     expect(cookieRead).not.toHaveBeenCalled();
+  });
+
+  it("collects off-screen long pages and images inserted during a bounded lazy scan", async () => {
+    const first = addImage({
+      currentSrc: "https://example.com/long-page-1.png",
+      naturalWidth: 900,
+      naturalHeight: 6000,
+      bounds: rect(390, 2600, window.innerHeight + 100),
+    });
+    first.id = "long-page";
+    vi.spyOn(document.documentElement, "scrollHeight", "get").mockReturnValue(2400);
+    vi.spyOn(window, "scrollTo").mockImplementation((_x, y) => {
+      if (Number(y) > 0 && !document.getElementById("lazy-page")) {
+        const lazy = addImage({
+          currentSrc: "https://example.com/lazy-page.png",
+          naturalWidth: 900,
+          naturalHeight: 1800,
+          bounds: rect(390, 780, 1500),
+        });
+        lazy.id = "lazy-page";
+      }
+    });
+
+    const collection = await collectPageImagesWithDiagnostics({
+      maxSteps: 4,
+      settleMilliseconds: 0,
+    });
+
+    expect(collection.images.map((image) => image.source)).toEqual([
+      "https://example.com/long-page-1.png",
+      "https://example.com/lazy-page.png",
+    ]);
   });
 });

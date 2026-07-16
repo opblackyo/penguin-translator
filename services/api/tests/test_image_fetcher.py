@@ -7,6 +7,7 @@ import pytest
 
 from penguin_translator_api.services.image_fetcher import (
     ImageFetcher,
+    ImageFetchError,
     ImageFetchTimeoutError,
     ImageTooLargeError,
     UnsafeImageUrlError,
@@ -58,21 +59,24 @@ async def test_rejects_loopback_and_url_credentials() -> None:
         await fetcher.fetch("https://user:password@example.com/image.png")
 
 
-async def test_allows_only_an_exact_dev_host_exception() -> None:
+async def test_allows_only_an_exact_dev_host_and_port_exception() -> None:
     transport = httpx.MockTransport(
         lambda request: httpx.Response(
             200, headers={"Content-Type": "image/png"}, content=b"png", request=request
         )
     )
     fetcher = ImageFetcher(
-        make_settings(dev_allowed_image_hosts=frozenset({"m1-test.local"})),
+        make_settings(dev_allowed_image_targets=frozenset({"m1-test.local:4173"})),
         resolver=private_resolver,
         transport=transport,
     )
 
-    result = await fetcher.fetch("http://m1-test.local/image.png")
+    result = await fetcher.fetch("http://m1-test.local:4173/image.png")
 
     assert result.content == b"png"
+
+    with pytest.raises(UnsafeImageUrlError):
+        await fetcher.fetch("http://m1-test.local:8000/image.png")
 
 
 async def test_revalidates_redirect_targets_and_blocks_private_redirect() -> None:
@@ -91,6 +95,24 @@ async def test_revalidates_redirect_targets_and_blocks_private_redirect() -> Non
 
     with pytest.raises(UnsafeImageUrlError):
         await fetcher.fetch("https://images.example.com/page.png")
+
+
+async def test_rejects_private_redirect_to_a_different_port_on_an_allowed_host() -> None:
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            302,
+            headers={"Location": "http://m1-test.local:8000/private"},
+            request=request,
+        )
+    )
+    fetcher = ImageFetcher(
+        make_settings(dev_allowed_image_targets=frozenset({"m1-test.local:4173"})),
+        resolver=private_resolver,
+        transport=transport,
+    )
+
+    with pytest.raises(UnsafeImageUrlError):
+        await fetcher.fetch("http://m1-test.local:4173/page.png")
 
 
 async def test_rejects_oversize_invalid_mime_and_timeout() -> None:
@@ -128,3 +150,23 @@ async def test_rejects_oversize_invalid_mime_and_timeout() -> None:
         await invalid_mime.fetch("https://images.example.com/page.png")
     with pytest.raises(ImageFetchTimeoutError):
         await timeout.fetch("https://images.example.com/page.png")
+
+
+@pytest.mark.parametrize(
+    "error_type",
+    [httpx.ConnectError, httpx.ReadError, httpx.RemoteProtocolError],
+)
+async def test_normalizes_transport_failures(
+    error_type: type[httpx.RequestError],
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise error_type("transport failed", request=request)
+
+    fetcher = ImageFetcher(
+        make_settings(),
+        resolver=public_resolver,
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(ImageFetchError, match="transport"):
+        await fetcher.fetch("https://images.example.com/page.png?secret=query")

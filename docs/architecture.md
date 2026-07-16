@@ -34,3 +34,21 @@ source_language = auto/ko/en or reading_order = auto/ltr
 download or model logic. The PaddleOCR model is initialized once per API process. OCR results are
 cached briefly by SHA-256 of image bytes, but neither image bytes nor translations are written to
 disk. The model cache is a local, ignored opt-in dependency cache and is not application data.
+
+## M2 private-alpha boundary
+
+M2 keeps one request per image so the existing Shortcut can collect individual successes and
+failures. `RuntimeServices` limits simultaneous OCR/Gemini work to two requests by default; one
+request failure therefore does not roll back or terminate successful responses from other images.
+
+The extractor performs a bounded page scroll to activate ordinary lazy loading, restores the
+original position, then collects document-visible large images. It prefers `currentSrc`, supports
+lazy attributes and `srcset`, preserves query strings, removes duplicate sources, and uses generic
+size/semantic evidence for icons, avatars, logos, and advertisements. It contains no named-site
+rules.
+
+Renderer input remains backward compatible with `{ results: [...] }` and may additionally include
+`failures` and `progress`. The Shadow DOM panel exposes progress and source/translation controls.
+Cancel and retry buttons persist explicit page-level request flags and dispatch DOM events so a host
+workflow can poll them between image requests; they cannot interrupt an iOS **Get Contents of URL**
+action that is already in flight.

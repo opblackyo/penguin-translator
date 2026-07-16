@@ -32,6 +32,7 @@ test("extractor bundle completes with visible HTTP images", async ({ page }) => 
     });
   });
   await page.addScriptTag({ path: resolve("dist/extractor.iife.js") });
+  await page.waitForFunction(() => typeof Reflect.get(window, "penguinResult") === "string");
 
   const serialized = await page.evaluate(() => Reflect.get(window, "penguinResult"));
   const result = JSON.parse(serialized);
@@ -66,6 +67,7 @@ test("renderer bundle mounts a Shadow DOM panel and survives DOM image insertion
     });
   });
   await page.addScriptTag({ path: resolve("dist/extractor.iife.js") });
+  await page.waitForFunction(() => typeof Reflect.get(window, "penguinResult") === "string");
   const extracted = await page.evaluate(() => JSON.parse(Reflect.get(window, "penguinResult")));
   const clientImageId = extracted.images[0].client_image_id;
 

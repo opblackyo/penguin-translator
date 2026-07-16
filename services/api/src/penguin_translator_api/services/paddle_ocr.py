@@ -143,6 +143,8 @@ class PaddleOCRProvider:
             pixels = np.asarray(image.convert("RGB"))
         try:
             results = cast(Iterable[object], await asyncio.to_thread(self._engine.predict, pixels))
+            return normalize_paddle_results(results, detected_language=self._language)
         except Exception as error:
-            raise OCRProviderUnavailableError("PaddleOCR inference failed") from error
-        return normalize_paddle_results(results, detected_language=self._language)
+            raise OCRProviderUnavailableError(
+                "PaddleOCR inference or output normalization failed"
+            ) from error

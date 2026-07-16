@@ -12,10 +12,22 @@ describe("ControlPanel", () => {
     const mount = document.createElement("div");
     shadow.append(mount);
 
-    render(<ControlPanel onRemove={() => undefined} />, mount);
+    render(
+      <ControlPanel
+        onRemove={() => undefined}
+        onTextModeChange={() => undefined}
+        onCancel={() => undefined}
+        onRetryFailures={() => undefined}
+        progress={{ total: 18, completed: 3, successful: 2, failed: 1 }}
+      />,
+      mount,
+    );
 
     expect(shadow.querySelector(".panel")?.textContent).toContain("企鵝翻譯機");
     expect(shadow.querySelector(".panel")?.textContent).toContain("移除全部");
+    expect(shadow.querySelector(".panel")?.textContent).toContain("正在翻譯 3 / 18");
+    expect(shadow.querySelector(".panel")?.textContent).toContain("成功 2 · 失敗 1");
+    expect(shadow.querySelector(".panel")?.textContent).toContain("重試失敗圖片");
     expect(document.head.querySelector("style")).toBeNull();
   });
 });

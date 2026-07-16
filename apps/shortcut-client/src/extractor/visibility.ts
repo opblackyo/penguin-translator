@@ -13,6 +13,7 @@ export function getVisibilityRejectionReasons(
   element: Element,
   rect = element.getBoundingClientRect(),
   viewport = window,
+  requireViewportIntersection = true,
 ): VisibilityRejectionReason[] {
   const style = getComputedStyle(element);
   const reasons: VisibilityRejectionReason[] = [];
@@ -32,17 +33,19 @@ export function getVisibilityRejectionReasons(
   if (rect.height <= 0) {
     reasons.push("RENDERED_HEIGHT_ZERO");
   }
-  if (rect.bottom <= 0) {
-    reasons.push("OUTSIDE_VIEWPORT_ABOVE");
-  }
-  if (rect.right <= 0) {
-    reasons.push("OUTSIDE_VIEWPORT_LEFT");
-  }
-  if (rect.top >= viewport.innerHeight) {
-    reasons.push("OUTSIDE_VIEWPORT_BELOW");
-  }
-  if (rect.left >= viewport.innerWidth) {
-    reasons.push("OUTSIDE_VIEWPORT_RIGHT");
+  if (requireViewportIntersection) {
+    if (rect.bottom <= 0) {
+      reasons.push("OUTSIDE_VIEWPORT_ABOVE");
+    }
+    if (rect.right <= 0) {
+      reasons.push("OUTSIDE_VIEWPORT_LEFT");
+    }
+    if (rect.top >= viewport.innerHeight) {
+      reasons.push("OUTSIDE_VIEWPORT_BELOW");
+    }
+    if (rect.left >= viewport.innerWidth) {
+      reasons.push("OUTSIDE_VIEWPORT_RIGHT");
+    }
   }
 
   return reasons;

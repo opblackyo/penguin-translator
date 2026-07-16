@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Penguin Translator M2 private-alpha fixtures</title>
+    <style>
+      :root { color: #17212b; background: #cbd5e1; font-family: system-ui, sans-serif; }
+      body { margin: 0 auto; max-width: 56rem; padding: 1rem; }
+      main { display: grid; gap: 1rem; }
+      .comic-page { display: block; width: 100%; height: auto; background: white; }
+      .reader-profile-avatar { width: 96px; height: 96px; }
+      .advertisement-banner { width: min(100%, 728px); height: auto; }
+    </style>
+  </head>
+  <body>
+    <h1>Self-created M2 long-page fixtures</h1>
+    <img id="profile-avatar" class="reader-profile-avatar" src="./assets/avatar.png" alt="Generic profile avatar" />
+    <img id="ad-banner" class="advertisement-banner" src="./assets/ad-banner.png" alt="Generic advertisement" />
+    <main id="reader">
+      <img class="comic-page" id="long-webtoon" src="./assets/long-webtoon.png?chapter=alpha" alt="Long webtoon" />
+      <img
+        class="comic-page"
+        id="responsive-page"
+        src="./assets/page-slice.png?density=1"
+        srcset="./assets/page-slice.png?density=1 1x, ./assets/page-slice.png?density=2 2x"
+        alt="Responsive page slice"
+      />
+      <img class="comic-page" id="duplicate-page" src="./assets/page-slice.png?density=2" alt="Duplicate page" />
+      <img
+        class="comic-page"
+        id="lazy-page"
+        data-src="./assets/lazy-page.png?lazy=true"
+        width="900"
+        height="1800"
+        alt="Delayed lazy page"
+      />
+    </main>
+    <script>
+      const lazy = document.querySelector("#lazy-page");
+      const observer = new IntersectionObserver((entries) => {
+        if (entries.some((entry) => entry.isIntersecting) && lazy && !lazy.getAttribute("src")) {
+          lazy.setAttribute("src", lazy.dataset.src);
+          observer.disconnect();
+        }
+      }, { rootMargin: "400px" });
+      observer.observe(lazy);
+
+      let inserted = false;
+      addEventListener("scroll", () => {
+        if (!inserted && scrollY > 500) {
+          inserted = true;
+          const image = document.createElement("img");
+          image.id = "delayed-page";
+          image.className = "comic-page";
+          image.src = "./assets/delayed-page.png?inserted=after-scroll";
+          image.alt = "Image inserted after scrolling";
+          document.querySelector("#reader").append(image);
+        }
+      }, { passive: true });
+    </script>
+  </body>
+</html>

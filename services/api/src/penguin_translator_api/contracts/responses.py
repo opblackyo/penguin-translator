@@ -15,6 +15,7 @@ class TranslationRegion(BaseModel):
     source_text: str
     translated_text: str
     orientation: Literal["vertical", "horizontal"]
+    background_style: Literal["opaque", "translucent"] = "translucent"
     detection_confidence: float = Field(ge=0, le=1)
     recognition_confidence: float = Field(ge=0, le=1)
 

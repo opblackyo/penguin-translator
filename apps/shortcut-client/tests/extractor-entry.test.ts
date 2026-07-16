@@ -38,7 +38,7 @@ describe("extractor entry", () => {
 
   it("always completes with structured JSON when collection throws", async () => {
     vi.doMock("../src/extractor/collect-images", () => ({
-      collectVisibleImagesWithDiagnostics: () => {
+      collectPageImagesWithDiagnostics: () => {
         throw new Error("collection failed");
       },
     }));

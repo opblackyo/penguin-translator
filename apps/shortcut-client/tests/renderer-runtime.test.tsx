@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  CANCEL_EVENT,
+  CANCEL_REQUESTED_KEY,
   mount,
   PANEL_ID,
+  RETRY_FAILURES_EVENT,
+  RETRY_REQUESTED_KEY,
   ROOT_ID,
   removeExisting,
   runRenderer,
@@ -42,6 +46,7 @@ function result(clientImageId: string): TranslationResult {
         source_text: "テスト",
         translated_text: "測試譯文",
         orientation: "vertical",
+        background_style: "opaque",
         detection_confidence: 1,
         recognition_confidence: 1,
       },
@@ -78,6 +83,7 @@ function flushAnimationFrames(): void {
 
 beforeEach(() => {
   document.body.replaceChildren();
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
   animationFrames = [];
   resizeCallback = undefined;
   resizeDisconnect = vi.fn();
@@ -102,6 +108,8 @@ beforeEach(() => {
 
 afterEach(() => {
   removeExisting();
+  Reflect.deleteProperty(window, CANCEL_REQUESTED_KEY);
+  Reflect.deleteProperty(window, RETRY_REQUESTED_KEY);
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   document.body.replaceChildren();
@@ -234,5 +242,45 @@ describe("renderer runtime", () => {
         errors: [expect.objectContaining({ code: "SHORTCUT_SCRIPT_ERROR" })],
       }),
     );
+  });
+
+  it("shows progress, toggles source text, and emits cancel/retry hooks", () => {
+    addMarkedImage("penguin-image-progress");
+    const cancel = vi.fn();
+    const retry = vi.fn();
+    window.addEventListener(CANCEL_EVENT, cancel);
+    window.addEventListener(RETRY_FAILURES_EVENT, retry);
+
+    mount([result("penguin-image-progress")], {
+      progress: { total: 3, completed: 2, successful: 1, failed: 1 },
+      failures: ["penguin-image-failed"],
+    });
+    const shadow = document.getElementById(PANEL_ID)?.shadowRoot;
+    const buttons = Array.from(shadow?.querySelectorAll("button") ?? []);
+    expect(shadow?.textContent).toContain("正在翻譯 2 / 3");
+
+    buttons.find((button) => button.textContent === "顯示原文")?.click();
+    expect(document.querySelector("[data-penguin-translator-region]")?.textContent).toBe("テスト");
+    buttons.find((button) => button.textContent === "取消")?.click();
+    buttons.find((button) => button.textContent === "重試失敗圖片")?.click();
+
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(retry).toHaveBeenCalledOnce();
+    const completion = vi.fn();
+    runRenderer(
+      {
+        results: [result("penguin-image-progress")],
+        failures: ["penguin-image-failed"],
+      },
+      completion,
+    );
+    expect(completion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cancel_requested: true,
+        retry_requested: ["penguin-image-failed"],
+      }),
+    );
+    window.removeEventListener(CANCEL_EVENT, cancel);
+    window.removeEventListener(RETRY_FAILURES_EVENT, retry);
   });
 });
