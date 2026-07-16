@@ -146,12 +146,14 @@ Use **Quick Look** on `Extraction` and `Images` while debugging. Remove or disab
    ```text
    Method: POST
    Headers:
-     Authorization: Bearer m0-local-shortcut
+    Authorization: Bearer <LOCAL_RANDOM_TOKEN>
    Request Body: JSON
    JSON value: the request Dictionary above
    ```
 
-`m0-local-shortcut` is a non-secret M0 presence value. The API does not authenticate it. Do not put a real credential in either JavaScript bundle.
+Use the same random local value configured as `PENGUIN_TRANSLATOR_LOCAL_API_TOKEN` in the ignored
+`.env`. M2 authenticates both retained mock and real translation requests. Never commit the value or
+put it in either JavaScript bundle.
 
 6. Add **Get Dictionary Value** for key `regions` from the API response.
 7. Add **If** and check whether that dictionary value has any value:
@@ -225,7 +227,8 @@ Common failures:
 - API unreachable: confirm both devices use the same Wi-Fi, the current IPv4 value, port `8000`, `/healthz`, and Private-network firewall access.
 - Test page unreachable: confirm Terminal B is running on port `4173`.
 - Extractor returns zero images: wait for SVG images to load and confirm the page is the repository test page.
-- API returns `401` or `403`: confirm the `Authorization` header has the `Bearer ` prefix and a non-empty M0 value.
+- API returns `401` or `403`: confirm the `Authorization` header has the `Bearer ` prefix and exactly
+  matches the ignored `.env` value; `503 LOCAL_API_TOKEN_NOT_CONFIGURED` means no token was loaded.
 - API returns `422`: inspect the request Dictionary for key names, UUID, language values, HTTP/HTTPS `page_url`, and the unmodified image descriptor.
 - Renderer reports `IMAGE_NOT_FOUND`: do not reload the Safari page between extractor and renderer; the marked image element must remain in the DOM.
 - JavaScript Timeout: remove intermediate **Quick Look** actions and confirm each script calls `completion`.
@@ -312,8 +315,23 @@ Renderer input may retain the existing `results` list and additionally supply:
 }
 ```
 
-The panel reports progress and provides **取消** and **重試失敗圖片**. These buttons set persistent
-page flags returned as `cancel_requested` and `retry_requested` on the next renderer invocation, so
-the Shortcut may skip later requests or run another Repeat over failed IDs. An already-running
-**Get Contents of URL** action cannot be interrupted. Keep heavy request concurrency at the default
+To make progress and cancellation operational without rebuilding the whole Shortcut, add these
+actions at the end of the existing **Repeat with Each** body:
+
+1. Build the current renderer input from `Successful Results`, `Failures`, and counts for `total`,
+   `completed`, `successful`, and `failed`.
+2. Run the renderer with **Run JavaScript on Web Page** so the panel is updated after this image.
+3. Add **Wait** for one second, giving the Owner a bounded chance to tap **取消**.
+4. Run the renderer once more with the same input plus `consume_control_requests: true`.
+5. Read `cancel_requested` from its completion Dictionary with **Get Dictionary Value**. Use **If**;
+   when true, use **Stop This Shortcut**. Already completed overlays stay mounted.
+
+The second invocation atomically returns and clears the flag, so it cannot leak into a later run. An
+already-running **Get Contents of URL** action cannot be interrupted; cancellation takes effect at
+the next image boundary.
+
+After the final renderer invocation, tapping **重試失敗圖片** queues the failed stable image IDs.
+Run the Shortcut again from the same Safari page: the extractor consumes that queue and returns only
+those failed descriptors, so the existing **Repeat with Each** retries only them. Reloading the page
+discards the DOM identity and queued retry. Keep heavy request concurrency at the backend default of
 two; do not issue dozens of parallel Shortcut requests.

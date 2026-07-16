@@ -4,8 +4,17 @@ from httpx import ASGITransport, AsyncClient
 
 from penguin_translator_api.contracts.responses import TranslationImageResponse
 from penguin_translator_api.main import app
+from penguin_translator_api.services.image_fetcher import ImageRedirectError
 from penguin_translator_api.services.runtime import get_runtime_services
 from tests.helpers import make_settings
+
+
+class ConfiguredRuntime:
+    settings = make_settings()
+
+
+def use_configured_runtime() -> None:
+    app.dependency_overrides[get_runtime_services] = lambda: ConfiguredRuntime()
 
 
 def valid_request() -> dict[str, object]:
@@ -34,13 +43,17 @@ async def test_translate_image_requires_bearer_credential() -> None:
 
 
 async def test_translate_image_returns_deterministic_mock_region() -> None:
+    use_configured_runtime()
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.post(
-            "/v1/translate-image",
-            headers={"Authorization": "Bearer local-m0-test-value"},
-            json=valid_request(),
-        )
+    try:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/v1/translate-image",
+                headers={"Authorization": "Bearer test-local-token"},
+                json=valid_request(),
+            )
+    finally:
+        app.dependency_overrides.clear()
 
     assert response.status_code == 200
     body = TranslationImageResponse.model_validate_json(response.text)
@@ -51,33 +64,78 @@ async def test_translate_image_returns_deterministic_mock_region() -> None:
 
 
 async def test_translate_image_accepts_http_lan_test_page() -> None:
+    use_configured_runtime()
     request = valid_request()
     request["page_url"] = "http://m0-test-page.local/reader"
 
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.post(
-            "/v1/translate-image",
-            headers={"Authorization": "Bearer local-m0-test-value"},
-            json=request,
-        )
+    try:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/v1/translate-image",
+                headers={"Authorization": "Bearer test-local-token"},
+                json=request,
+            )
+    finally:
+        app.dependency_overrides.clear()
 
     assert response.status_code == 200
 
 
 async def test_translate_image_rejects_non_http_page_url() -> None:
+    use_configured_runtime()
     request = valid_request()
     request["page_url"] = "ftp://example.com/reader"
 
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.post(
-            "/v1/translate-image",
-            headers={"Authorization": "Bearer local-m0-test-value"},
-            json=request,
-        )
+    try:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/v1/translate-image",
+                headers={"Authorization": "Bearer test-local-token"},
+                json=request,
+            )
+    finally:
+        app.dependency_overrides.clear()
 
     assert response.status_code == 422
+
+
+async def test_mock_request_rejects_an_incorrect_local_token() -> None:
+    use_configured_runtime()
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/v1/translate-image",
+                headers={"Authorization": "Bearer arbitrary-non-empty-value"},
+                json=valid_request(),
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 401
+    assert response.json()["detail"]["code"] == "LOCAL_API_TOKEN_INVALID"
+
+
+async def test_mock_request_without_token_configuration_is_diagnostic() -> None:
+    class MissingTokenRuntime:
+        settings = make_settings(local_api_token=None)
+
+    app.dependency_overrides[get_runtime_services] = lambda: MissingTokenRuntime()
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/v1/translate-image",
+                headers={"Authorization": "Bearer any-value"},
+                json=valid_request(),
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "LOCAL_API_TOKEN_NOT_CONFIGURED"
 
 
 async def test_real_request_uses_runtime_pipeline_without_rebuilding_m0_flow() -> None:
@@ -176,3 +234,30 @@ async def test_real_request_rejects_an_incorrect_local_token() -> None:
 
     assert response.status_code == 401
     assert response.json()["detail"]["code"] == "LOCAL_API_TOKEN_INVALID"
+
+
+async def test_real_request_maps_redirect_limit_to_safe_502() -> None:
+    class RedirectFailureRuntime:
+        settings = make_settings()
+
+        async def translate_real(self, request: object) -> TranslationImageResponse:
+            _ = request
+            raise ImageRedirectError("Image redirect limit exceeded")
+
+    request = valid_request()
+    request["source_language"] = "auto"
+    request["reading_order"] = "auto"
+    app.dependency_overrides[get_runtime_services] = lambda: RedirectFailureRuntime()
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/v1/translate-image",
+                headers={"Authorization": "Bearer test-local-token"},
+                json=request,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 502
+    assert response.json()["detail"] == {"code": "IMAGE_REDIRECT_FAILED"}

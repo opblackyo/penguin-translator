@@ -22,11 +22,11 @@ from penguin_translator_api.services.translator import TranslatorConfigurationEr
 router = APIRouter(prefix="/v1", tags=["translation"])
 bearer_scheme = HTTPBearer(
     bearerFormat="opaque",
-    description="M0 requires presence; real translation requires the configured local token.",
+    description="All translation requests require the configured private-LAN local token.",
 )
 
 
-def _verify_real_translation_token(
+def _verify_translation_token(
     credentials: HTTPAuthorizationCredentials, services: RuntimeServices
 ) -> None:
     configured = services.settings.local_api_token
@@ -50,8 +50,8 @@ async def translate_image(
     services: Annotated[RuntimeServices, Depends(get_runtime_services)],
 ) -> TranslationImageResponse:
     """Preserve M0 mock requests and execute the M1 real pipeline for auto-language requests."""
+    _verify_translation_token(credentials, services)
     if request.source_language != "ja" or request.reading_order != "rtl":
-        _verify_real_translation_token(credentials, services)
         try:
             return await services.translate_real(request)
         except UnsafeImageUrlError as error:

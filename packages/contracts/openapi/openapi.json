@@ -279,7 +279,7 @@
     "securitySchemes": {
       "HTTPBearer": {
         "bearerFormat": "opaque",
-        "description": "M0 requires presence; real translation requires the configured local token.",
+        "description": "All translation requests require the configured private-LAN local token.",
         "scheme": "bearer",
         "type": "http"
       }

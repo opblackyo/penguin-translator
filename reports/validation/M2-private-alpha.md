@@ -18,8 +18,8 @@ second translation provider.
 
 ## Implemented evidence
 
-- Real translation requires an exact configured local token; missing and incorrect values are
-  diagnostic and no credential is logged or bundled.
+- Mock and real translation require the exact configured local token; missing and incorrect values
+  are diagnostic and no credential is logged or bundled.
 - Private image exceptions are exact `host:port`; redirects and DNS results are revalidated.
 - HTTPX transport failures map to safe downloader errors.
 - Paddle cache configuration is applied before model initialization; malformed output is wrapped.
@@ -28,7 +28,8 @@ second translation provider.
   attributes, query strings, multiple slices, duplicate removal, and generic UI-asset exclusion.
 - Backend image-byte sampling labels white regions even for cross-origin page images. Renderer
   provides near-opaque white-region covers, translucent fallback, bounded font fitting,
-  horizontal wrapping, source/translation toggle, progress counts, cancel/retry host flags, and
+  horizontal wrapping, source/translation toggle, progress counts, consumed cancel requests,
+  next-run failed-ID retry, and
   preserved hide/show/remove, resize, scroll, and repeated-injection behavior.
 - All committed fixtures are self-created.
 
@@ -43,7 +44,11 @@ Intentional Partial Failure on iPhone: UNVERIFIED
 Final Status: READY_FOR_PRIVATE_REAL_PAGE_TEST
 ```
 
-The automated gate covers 34 frontend unit tests, 39 backend tests, nine Playwright WebKit E2E
+The automated gate covers 36 frontend unit tests, 47 backend tests, nine Playwright WebKit E2E
 scenarios, generated-contract verification, static typing, formatting, lint, and production bundles.
 The WebKit suite exercises the self-created M2 long page and keeps the M0/M1 and partial-failure
 paths passing. No Gemini request or model download is part of the general gate.
+
+The one requested readonly review initially found auth, bounded-scan, and control-flow gaps plus
+background, redirect, and malformed-output edge cases. A follow-up fix commit addresses all six;
+the workflow intentionally does not claim a second independent review.

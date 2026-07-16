@@ -88,6 +88,10 @@ try {
     ],
     {
       cwd: root,
+      env: {
+        ...process.env,
+        PENGUIN_TRANSLATOR_LOCAL_API_TOKEN: "local-contract-test-value",
+      },
       input: serializedItem,
       encoding: "utf8",
     },

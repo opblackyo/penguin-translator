@@ -59,6 +59,7 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     ["-m", "uvicorn", "penguin_translator_api.main:app", "--host", "127.0.0.1", "--port", "8000"],
     {
       cwd: apiDirectory,
+      env: { ...process.env, PENGUIN_TRANSLATOR_LOCAL_API_TOKEN: "playwright-local-token" },
       stdio: "ignore",
       windowsHide: true,
     },

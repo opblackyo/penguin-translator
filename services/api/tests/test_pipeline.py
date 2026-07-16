@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from io import BytesIO
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from penguin_translator_api.contracts.requests import TranslationImageRequest
 from penguin_translator_api.services.image_fetcher import FetchedImage
@@ -21,6 +21,14 @@ from tests.helpers import make_settings
 def png_bytes(width: int = 320, height: int = 240) -> bytes:
     output = BytesIO()
     Image.new("RGB", (width, height), "white").save(output, format="PNG")
+    return output.getvalue()
+
+
+def white_bubble_with_dark_text_bytes(width: int = 320, height: int = 240) -> bytes:
+    output = BytesIO()
+    image = Image.new("RGB", (width, height), "white")
+    ImageDraw.Draw(image).rectangle((40, 20, 110, 35), fill="black")
+    image.save(output, format="PNG")
     return output.getvalue()
 
 
@@ -165,3 +173,17 @@ async def test_empty_image_returns_explicit_no_text_warning() -> None:
 
     assert response.regions == []
     assert response.warnings == ["OCR_NO_TEXT"]
+
+
+async def test_white_bubble_with_dark_text_uses_opaque_background() -> None:
+    pipeline = RealTranslationPipeline(
+        settings=make_settings(),
+        image_fetcher=FakeFetcher(white_bubble_with_dark_text_bytes()),  # type: ignore[arg-type]
+        ocr_provider=FakeOCR(),
+        translator=RecordingTranslator(),
+        cache=OcrResultCache(ttl_seconds=60, max_entries=8),
+    )
+
+    response = await pipeline.translate(real_request())
+
+    assert response.regions[0].background_style == "opaque"

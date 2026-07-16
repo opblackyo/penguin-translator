@@ -280,6 +280,26 @@ describe("renderer runtime", () => {
         retry_requested: ["penguin-image-failed"],
       }),
     );
+    const consumed = vi.fn();
+    runRenderer(
+      {
+        results: [result("penguin-image-progress")],
+        failures: ["penguin-image-failed"],
+        consume_control_requests: true,
+      },
+      consumed,
+    );
+    expect(consumed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cancel_requested: true,
+        retry_requested: ["penguin-image-failed"],
+      }),
+    );
+    const afterConsumption = vi.fn();
+    runRenderer({ results: [result("penguin-image-progress")] }, afterConsumption);
+    expect(afterConsumption).toHaveBeenCalledWith(
+      expect.objectContaining({ cancel_requested: false, retry_requested: [] }),
+    );
     window.removeEventListener(CANCEL_EVENT, cancel);
     window.removeEventListener(RETRY_FAILURES_EVENT, retry);
   });

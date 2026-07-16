@@ -9,6 +9,7 @@ from penguin_translator_api.services.image_fetcher import (
     ImageFetcher,
     ImageFetchError,
     ImageFetchTimeoutError,
+    ImageRedirectError,
     ImageTooLargeError,
     UnsafeImageUrlError,
     UnsupportedImageTypeError,
@@ -113,6 +114,24 @@ async def test_rejects_private_redirect_to_a_different_port_on_an_allowed_host()
 
     with pytest.raises(UnsafeImageUrlError):
         await fetcher.fetch("http://m1-test.local:4173/page.png")
+
+
+async def test_normalizes_redirect_limit_as_a_fetch_failure() -> None:
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            302,
+            headers={"Location": "/next"},
+            request=request,
+        )
+    )
+    fetcher = ImageFetcher(
+        make_settings(image_fetch_max_redirects=1),
+        resolver=public_resolver,
+        transport=transport,
+    )
+
+    with pytest.raises(ImageRedirectError, match="limit"):
+        await fetcher.fetch("https://images.example.com/page.png")
 
 
 async def test_rejects_oversize_invalid_mime_and_timeout() -> None:

@@ -8,10 +8,10 @@ FastAPI Pydantic models under `services/api/src/penguin_translator_api/contracts
 - `POST /v1/translate-image` requires an `Authorization: Bearer ...` header. `ja + rtl` returns the
   M0 mock region; M1 language/order values run image fetch, OCR, and translation.
 
-The M0 Bearer dependency checks presence and scheme only. Real translation compares the Bearer value
-against `PENGUIN_TRANSLATOR_LOCAL_API_TOKEN` using a constant-time comparison. A missing local token
-returns diagnostic `503`; a mismatch returns `401`. The token is a private-LAN alpha boundary, not a
-public deployment authentication system.
+Both the retained M0 mock behavior and real translation compare the Bearer value against
+`PENGUIN_TRANSLATOR_LOCAL_API_TOKEN` using a constant-time comparison. A missing local token returns
+diagnostic `503`; a mismatch returns `401`. The API process and `/healthz` still start without a token.
+The token is a private-LAN alpha boundary, not a public deployment authentication system.
 
 `source_language` accepts `auto`, `ja`, `ko`, and `en`. `reading_order` accepts `auto`, `ltr`, and
 `rtl`. `target_language` remains `zh-Hant`.
@@ -26,7 +26,8 @@ SSRF-bounded `ImageFetcher`; it never fetches `page_url`.
 
 Non-public image addresses are denied unless the resolved target matches an exact development-only
 `hostname:port` entry. Every redirect target is resolved and checked again. Timeout, size, MIME,
-HTTP status, connection, read, TLS, and protocol failures are normalized to bounded diagnostic
-responses without returning the source URL.
+HTTP status, redirect-limit, connection, read, TLS, and protocol failures are normalized to bounded
+diagnostic responses without returning the source URL. Redirect-limit and transport failures return
+`502`; a redirect to a blocked target remains a `400` policy rejection.
 
 The formal `pnpm test:contract-roundtrip` check loads the real TypeScript extractor source, serializes its image item, and sends that exact JSON to Python. Python validates it with `ImageSource`, sends it through the FastAPI ASGI app, and verifies that an injected unknown field is still rejected.

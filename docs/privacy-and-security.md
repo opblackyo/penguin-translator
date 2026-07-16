@@ -25,10 +25,11 @@ fixtures, snapshots, command output, Actions logs, or Git history. Application l
 and region counts, not URLs, image bytes, recognized source text, translated text, request
 Authorization, or API keys.
 
-Real translation also requires a local random Bearer value from
+Every translation request, including the retained deterministic mock path, requires the exact local
+random Bearer value from
 `PENGUIN_TRANSLATOR_LOCAL_API_TOKEN`. It is loaded only through centralized Settings, compared in
 constant time, and must not appear in documentation examples, bundles, reports, logs, or Git. API
-startup and the M0 mock path do not require this token, but M1/M2 requests fail clearly without it.
+startup and `/healthz` do not require this token; `/v1/translate-image` fails clearly without it.
 
 `PADDLE_PDX_CACHE_HOME` is resolved by centralized Settings and applied before model initialization.
 The default repository cache directory is ignored; model files are local dependencies and never

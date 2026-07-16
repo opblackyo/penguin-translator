@@ -9,23 +9,24 @@ export interface RegionLayout {
 
 export function classifyBackgroundPixels(pixels: Uint8ClampedArray): RegionBackgroundMode {
   if (pixels.length < 4) return "translucent";
-  let luminanceTotal = 0;
-  let luminanceSquaredTotal = 0;
   let count = 0;
+  let whitePixels = 0;
+  let darkNeutralPixels = 0;
   for (let index = 0; index + 3 < pixels.length; index += 4) {
     if (pixels[index + 3] === 0) continue;
-    const luminance =
-      (pixels[index] ?? 0) * 0.2126 +
-      (pixels[index + 1] ?? 0) * 0.7152 +
-      (pixels[index + 2] ?? 0) * 0.0722;
-    luminanceTotal += luminance;
-    luminanceSquaredTotal += luminance * luminance;
+    const red = pixels[index] ?? 0;
+    const green = pixels[index + 1] ?? 0;
+    const blue = pixels[index + 2] ?? 0;
+    const minimum = Math.min(red, green, blue);
+    const maximum = Math.max(red, green, blue);
+    if (minimum >= 225 && maximum - minimum <= 24) whitePixels += 1;
+    if (maximum <= 90 && maximum - minimum <= 24) darkNeutralPixels += 1;
     count += 1;
   }
   if (count === 0) return "translucent";
-  const average = luminanceTotal / count;
-  const variance = Math.max(0, luminanceSquaredTotal / count - average * average);
-  return average >= 235 && Math.sqrt(variance) <= 24 ? "opaque" : "translucent";
+  return whitePixels / count >= 0.65 && (whitePixels + darkNeutralPixels) / count >= 0.85
+    ? "opaque"
+    : "translucent";
 }
 
 export function detectRegionBackground(

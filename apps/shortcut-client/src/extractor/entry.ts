@@ -1,3 +1,4 @@
+import { consumeControlRequests } from "../shared/control-requests";
 import { toShortcutError } from "../shared/errors";
 import { VERSION } from "../shared/version";
 import { collectPageImagesWithDiagnostics, type ExtractionResult } from "./collect-images";
@@ -15,12 +16,23 @@ export function isDebugModeEnabled(): boolean {
 async function run(): Promise<void> {
   try {
     const collection = await collectPageImagesWithDiagnostics();
+    const controls = consumeControlRequests();
+    const retryIds = new Set(controls.retryRequested);
+    const images = retryIds.size
+      ? collection.images.filter((image) => retryIds.has(image.client_image_id))
+      : collection.images;
+    if (retryIds.size) {
+      collection.warnings.push("RETRY_FAILURES_REQUESTED");
+    }
     const result: ExtractionResult = {
       version: VERSION,
       page_url: window.location.href,
-      images: collection.images,
+      images,
       warnings: collection.warnings,
     };
+    if (retryIds.size) {
+      result.control = { retry_requested: [...retryIds] };
+    }
     if (isDebugModeEnabled()) {
       result.debug = collection.diagnostics;
     }

@@ -52,6 +52,9 @@ export interface ExtractionResult {
   page_url: string;
   images: ExtractedImage[];
   warnings: string[];
+  control?: {
+    retry_requested: string[];
+  };
   debug?: ExtractionDiagnostics;
 }
 
@@ -227,16 +230,20 @@ export async function collectPageImagesWithDiagnostics(
   const originalX = window.scrollX;
   const originalY = window.scrollY;
   const viewportHeight = Math.max(window.innerHeight, 320);
-  const maximumScroll = Math.max(0, document.documentElement.scrollHeight - viewportHeight);
   const step = Math.max(320, Math.floor(viewportHeight * 0.8));
-  const requestedSteps = Math.ceil(maximumScroll / step) + 1;
-  const scanSteps = Math.min(maxSteps, requestedSteps);
+  let maximumScroll = Math.max(0, document.documentElement.scrollHeight - viewportHeight);
+  let requestedSteps = Math.ceil(maximumScroll / step) + 1;
+  let scanSteps = Math.min(maxSteps, requestedSteps);
   const warnings: string[] = [];
 
   if (maximumScroll > 0) {
     try {
       for (let index = 0; index < scanSteps; index += 1) {
-        const top = index === scanSteps - 1 ? maximumScroll : Math.min(maximumScroll, index * step);
+        maximumScroll = Math.max(0, document.documentElement.scrollHeight - viewportHeight);
+        requestedSteps = Math.max(requestedSteps, Math.ceil(maximumScroll / step) + 1);
+        scanSteps = Math.min(maxSteps, Math.max(scanSteps, requestedSteps));
+        const top =
+          scanSteps === 1 ? maximumScroll : Math.round((maximumScroll * index) / (scanSteps - 1));
         window.scrollTo(originalX, top);
         await waitForLazyContent(settleMilliseconds);
       }

@@ -49,6 +49,8 @@ rules.
 
 Renderer input remains backward compatible with `{ results: [...] }` and may additionally include
 `failures` and `progress`. The Shadow DOM panel exposes progress and source/translation controls.
-Cancel and retry buttons persist explicit page-level request flags and dispatch DOM events so a host
-workflow can poll them between image requests; they cannot interrupt an iOS **Get Contents of URL**
-action that is already in flight.
+Cancel and retry buttons persist explicit page-level request flags. The Shortcut invokes the
+renderer between requests, briefly waits for interaction, then invokes it with
+`consume_control_requests: true`; a returned cancel flag stops later requests but cannot interrupt
+an iOS **Get Contents of URL** action already in flight. A retry click is consumed by the extractor
+on the next Shortcut run, which returns only the stable failed image IDs.

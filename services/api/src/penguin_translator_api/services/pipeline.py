@@ -4,9 +4,9 @@ import hashlib
 import logging
 import time
 from io import BytesIO
-from typing import Literal
+from typing import Literal, cast
 
-from PIL import Image, ImageStat, UnidentifiedImageError
+from PIL import Image, UnidentifiedImageError
 
 from penguin_translator_api.config import Settings
 from penguin_translator_api.contracts.requests import TranslationImageRequest
@@ -53,12 +53,26 @@ def _background_style(
     box = (min(xs), min(ys), max(xs) + 1, max(ys) + 1)
     sample = image.crop(box).convert("RGB")
     sample.thumbnail((32, 32))
-    statistics = ImageStat.Stat(sample)
-    average = statistics.mean
-    deviation = statistics.stddev
-    luminance = average[0] * 0.2126 + average[1] * 0.7152 + average[2] * 0.0722
-    maximum_deviation = max(deviation)
-    return "opaque" if luminance >= 235 and maximum_deviation <= 24 else "translucent"
+    pixels = [
+        cast(tuple[int, int, int], sample.getpixel((x, y)))
+        for y in range(sample.height)
+        for x in range(sample.width)
+    ]
+    if not pixels:
+        return "translucent"
+    white_pixels = sum(
+        1
+        for red, green, blue in pixels
+        if min(red, green, blue) >= 225 and max(red, green, blue) - min(red, green, blue) <= 24
+    )
+    dark_neutral_pixels = sum(
+        1
+        for red, green, blue in pixels
+        if max(red, green, blue) <= 90 and max(red, green, blue) - min(red, green, blue) <= 24
+    )
+    white_ratio = white_pixels / len(pixels)
+    neutral_ratio = (white_pixels + dark_neutral_pixels) / len(pixels)
+    return "opaque" if white_ratio >= 0.65 and neutral_ratio >= 0.85 else "translucent"
 
 
 class RealTranslationPipeline:

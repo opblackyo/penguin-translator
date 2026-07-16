@@ -28,6 +28,10 @@ class UnsafeImageUrlError(ImageFetchError):
     code = "IMAGE_URL_BLOCKED"
 
 
+class ImageRedirectError(ImageFetchError):
+    code = "IMAGE_REDIRECT_FAILED"
+
+
 class ImageFetchTimeoutError(ImageFetchError):
     code = "IMAGE_FETCH_TIMEOUT"
 
@@ -101,7 +105,7 @@ class ImageFetcher:
                     ) as response:
                         if response.is_redirect:
                             if redirect_count >= self._settings.image_fetch_max_redirects:
-                                raise UnsafeImageUrlError("Image redirect limit exceeded")
+                                raise ImageRedirectError("Image redirect limit exceeded")
                             location = response.headers.get("location")
                             if not location:
                                 raise ImageFetchError("Image redirect omitted Location")

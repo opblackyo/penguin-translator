@@ -46,6 +46,25 @@ def test_ignores_non_quadrilateral_regions() -> None:
     assert regions == []
 
 
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"rec_polys": [], "rec_texts": []},
+        {"rec_polys": [], "rec_texts": [], "rec_scores": "invalid"},
+        {
+            "rec_polys": [[[0, 0], [1, 0], [1, 1], [0, 1]]],
+            "rec_texts": [],
+            "rec_scores": [1],
+        },
+    ],
+)
+def test_rejects_missing_wrong_type_and_mismatched_provider_arrays(
+    payload: dict[str, object],
+) -> None:
+    with pytest.raises(OCRProviderUnavailableError):
+        normalize_paddle_results([payload], detected_language="en")
+
+
 def test_detects_korean_english_and_mixed_scripts() -> None:
     assert detect_text_language("안녕하세요", "korean") == "ko"
     assert detect_text_language("Hello", "korean") == "en"

@@ -34,11 +34,22 @@ def _result_payload(result: object) -> Mapping[str, object]:
     return cast(Mapping[str, object], nested) if isinstance(nested, Mapping) else typed_payload
 
 
-def _sequence(payload: Mapping[str, object], key: str) -> Sequence[object]:
-    value = payload.get(key, ())
+def _sequence(
+    payload: Mapping[str, object], key: str, *, required: bool = False
+) -> Sequence[object]:
+    if key not in payload:
+        if required:
+            raise OCRProviderUnavailableError(f"PaddleOCR output omitted {key}")
+        return ()
+    value = payload[key]
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
         return cast(Sequence[object], value)
-    return ()
+    raise OCRProviderUnavailableError(f"PaddleOCR output field {key} is not a sequence")
+
+
+def _validate_cardinality(expected: int, values: Sequence[object], key: str) -> None:
+    if values and len(values) != expected:
+        raise OCRProviderUnavailableError(f"PaddleOCR output field {key} has mismatched length")
 
 
 def _number(value: object) -> float:
@@ -67,11 +78,18 @@ def normalize_paddle_results(
     normalized: list[OcrRegion] = []
     for result in results:
         payload = _result_payload(result)
-        polygons = _sequence(payload, "rec_polys")
-        texts = _sequence(payload, "rec_texts")
-        recognition_scores = _sequence(payload, "rec_scores")
+        polygons = _sequence(payload, "rec_polys", required=True)
+        texts = _sequence(payload, "rec_texts", required=True)
+        recognition_scores = _sequence(payload, "rec_scores", required=True)
         detection_scores = _sequence(payload, "dt_scores") or recognition_scores
         orientation_angles = _sequence(payload, "textline_orientation_angles")
+
+        if len(texts) != len(polygons) or len(recognition_scores) != len(polygons):
+            raise OCRProviderUnavailableError(
+                "PaddleOCR recognition arrays have mismatched lengths"
+            )
+        _validate_cardinality(len(polygons), detection_scores, "dt_scores")
+        _validate_cardinality(len(polygons), orientation_angles, "textline_orientation_angles")
 
         for index, (polygon, text, recognition_score) in enumerate(
             zip(polygons, texts, recognition_scores, strict=False)

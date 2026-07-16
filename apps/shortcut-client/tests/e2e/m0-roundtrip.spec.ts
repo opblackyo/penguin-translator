@@ -172,7 +172,7 @@ test("production bundles complete extractor to live FastAPI to renderer round tr
   const results: unknown[] = [];
   for (const [index, image] of extraction.images.entries()) {
     const response = await request.post(API_URL, {
-      headers: { Authorization: "Bearer playwright-m0-roundtrip" },
+      headers: { Authorization: "Bearer playwright-local-token" },
       data: requestBody(extraction, image, index),
     });
     expect(response.status()).toBe(200);
@@ -256,7 +256,7 @@ test("one API failure does not prevent other image responses from rendering", as
   for (const [index, image] of extraction.images.entries()) {
     const body = requestBody(extraction, image, index);
     const response = await request.post(API_URL, {
-      headers: { Authorization: "Bearer playwright-m0-partial-failure" },
+      headers: { Authorization: "Bearer playwright-local-token" },
       data: index === 1 ? { ...body, source_language: "invalid" } : body,
     });
     if (response.ok()) {

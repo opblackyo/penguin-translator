@@ -299,4 +299,33 @@ describe("collectVisibleImages", () => {
       "https://example.com/lazy-page.png",
     ]);
   });
+
+  it("distributes bounded scan steps across a genuinely long page", async () => {
+    vi.spyOn(document.documentElement, "scrollHeight", "get").mockReturnValue(50_768);
+    const visited: number[] = [];
+    vi.spyOn(window, "scrollTo").mockImplementation((_x, y) => {
+      const top = Number(y);
+      visited.push(top);
+      if (top >= 20_000 && top <= 30_000 && !document.getElementById("middle-lazy-page")) {
+        const middle = addImage({
+          currentSrc: "https://example.com/middle-lazy-page.png",
+          naturalWidth: 900,
+          naturalHeight: 1800,
+          bounds: rect(390, 780, 25_000),
+        });
+        middle.id = "middle-lazy-page";
+      }
+    });
+
+    const collection = await collectPageImagesWithDiagnostics({
+      maxSteps: 5,
+      settleMilliseconds: 0,
+    });
+
+    expect(visited).toContain(25_000);
+    expect(collection.images.map((image) => image.source)).toContain(
+      "https://example.com/middle-lazy-page.png",
+    );
+    expect(collection.warnings).toContain("LAZY_SCAN_STEP_LIMIT_REACHED");
+  });
 });

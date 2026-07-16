@@ -66,7 +66,8 @@ Mock API 使用 repository script 明確設定的 `8000` port，自拍 SVG 測�
 
 ## M0 限制
 
-- Mock API 只檢查 Bearer credential 是否存在，尚未建立正式 token 驗證。
+- M2 的 Mock 與真實翻譯路徑都以 constant-time comparison 驗證本機設定的 Bearer token；
+  token 未設定時服務仍可啟動，但翻譯 endpoint 會回傳診斷性 `503`。
 - Mock API 不下載圖片，不儲存 URL 或圖片內容，只回傳可預測的測試區域。
 - `extractor.iife.js` 和 `renderer.iife.js` 是自包含 bundle，供 iOS 捷徑中的 **Run JavaScript on Web Page** 使用。
 - 捷徑中文動作名稱必須由使用者在實機上確認。

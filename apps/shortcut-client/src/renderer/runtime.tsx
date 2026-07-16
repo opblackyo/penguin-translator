@@ -1,5 +1,13 @@
 import type { components } from "@penguin-translator/contracts";
 import { render } from "preact";
+import {
+  CANCEL_REQUESTED_KEY,
+  consumeControlRequests,
+  RETRY_REQUESTED_KEY,
+  readControlRequests,
+  requestCancellation,
+  requestFailureRetry,
+} from "../shared/control-requests";
 import { toShortcutError } from "../shared/errors";
 import { findImageByClientId } from "../shared/image-identity";
 import { VERSION } from "../shared/version";
@@ -15,8 +23,7 @@ export const PANEL_ID = "penguin-translator-control-host";
 export const RENDERER_CLEANUP_KEY = "__penguinTranslatorM0RendererCleanup";
 export const CANCEL_EVENT = "penguin-translator:cancel";
 export const RETRY_FAILURES_EVENT = "penguin-translator:retry-failures";
-export const CANCEL_REQUESTED_KEY = "__penguinTranslatorCancelRequested";
-export const RETRY_REQUESTED_KEY = "__penguinTranslatorRetryRequested";
+export { CANCEL_REQUESTED_KEY, RETRY_REQUESTED_KEY };
 
 type Cleanup = () => void;
 
@@ -29,6 +36,7 @@ export interface RendererInput {
   results: TranslationResult[];
   failures: string[];
   progress: ProgressState;
+  consumeControlRequests: boolean;
 }
 
 function nonNegativeInteger(value: unknown, fallback: number): number {
@@ -79,6 +87,7 @@ export function parseInput(input: unknown): RendererInput {
     results: results as TranslationResult[],
     failures,
     progress: normalizeProgress(record.progress, results.length, failures.length),
+    consumeControlRequests: record.consume_control_requests === true,
   };
 }
 
@@ -226,11 +235,11 @@ export function mount(
           draw();
         }}
         onCancel={() => {
-          Reflect.set(window, CANCEL_REQUESTED_KEY, true);
+          requestCancellation();
           window.dispatchEvent(new CustomEvent(CANCEL_EVENT));
         }}
         onRetryFailures={() => {
-          Reflect.set(window, RETRY_REQUESTED_KEY, failures);
+          requestFailureRetry(failures);
           window.dispatchEvent(
             new CustomEvent(RETRY_FAILURES_EVENT, { detail: { client_image_ids: failures } }),
           );
@@ -267,13 +276,16 @@ export function runRenderer(input: unknown, complete: (result: unknown) => void)
       progress: parsed.progress,
       failures: parsed.failures,
     });
+    const controls = parsed.consumeControlRequests
+      ? consumeControlRequests()
+      : readControlRequests();
     complete({
       ok: true,
       version: VERSION,
       rendered_regions: result.renderedRegions,
       warnings: result.warnings,
-      cancel_requested: Reflect.get(window, CANCEL_REQUESTED_KEY) === true,
-      retry_requested: Reflect.get(window, RETRY_REQUESTED_KEY) ?? [],
+      cancel_requested: controls.cancelRequested,
+      retry_requested: controls.retryRequested,
     });
   } catch (error) {
     complete({ ok: false, version: VERSION, errors: [toShortcutError(error)] });
