@@ -2,7 +2,13 @@ from uuid import UUID
 
 from httpx import ASGITransport, AsyncClient
 
-from penguin_translator_api.contracts.responses import TranslationImageResponse
+from penguin_translator_api.contracts.responses import (
+    TranslationImageResponse,
+    TranslationPageProgress,
+    TranslationPageResponse,
+    TranslationPageTiming,
+    TranslationWarmupResponse,
+)
 from penguin_translator_api.main import app
 from penguin_translator_api.services.image_fetcher import ImageRedirectError
 from penguin_translator_api.services.runtime import get_runtime_services
@@ -32,6 +38,68 @@ def valid_request() -> dict[str, object]:
         "target_language": "zh-Hant",
         "reading_order": "rtl",
     }
+
+
+def valid_page_request() -> dict[str, object]:
+    single = valid_request()
+    return {
+        "request_id": single["request_id"],
+        "page_url": single["page_url"],
+        "images": [single["image"]],
+        "source_language": "auto",
+        "target_language": "zh-Hant",
+        "reading_order": "auto",
+    }
+
+
+async def test_page_batch_and_warmup_require_token_and_return_typed_contracts() -> None:
+    class PageRuntime:
+        settings = make_settings()
+
+        async def translate_page(self, request: object) -> TranslationPageResponse:
+            _ = request
+            return TranslationPageResponse(
+                request_id="123e4567-e89b-12d3-a456-426614174000",  # type: ignore[arg-type]
+                results=[],
+                failures=[],
+                progress=TranslationPageProgress(total=1, completed=1, successful=0, failed=0),
+                warnings=["OCR_NO_TEXT"],
+                timing=TranslationPageTiming(
+                    total_ms=1,
+                    fetch_ms=0,
+                    ocr_ms=1,
+                    gemini_ms=0,
+                    queue_wait_ms=0,
+                    cold_start_ms=0,
+                    gemini_calls=0,
+                    ocr_cache_hits=0,
+                    warm_execution=True,
+                ),
+            )
+
+        async def warmup(self) -> TranslationWarmupResponse:
+            return TranslationWarmupResponse(ready=True, initialization_ms=1)
+
+    app.dependency_overrides[get_runtime_services] = lambda: PageRuntime()
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            unauthorized = await client.post("/v1/translate-page", json=valid_page_request())
+            page = await client.post(
+                "/v1/translate-page",
+                headers={"Authorization": "Bearer test-local-token"},
+                json=valid_page_request(),
+            )
+            warmup = await client.post(
+                "/v1/warmup", headers={"Authorization": "Bearer test-local-token"}
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert unauthorized.status_code in {401, 403}
+    assert page.status_code == 200
+    assert page.json()["progress"]["completed"] == 1
+    assert warmup.json() == {"ready": True, "initialization_ms": 1.0, "diagnostic": None}
 
 
 async def test_translate_image_requires_bearer_credential() -> None:

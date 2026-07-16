@@ -1,7 +1,7 @@
 from typing import Literal
 from uuid import UUID
 
-from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field
+from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, model_validator
 
 
 class ImageSource(BaseModel):
@@ -23,3 +23,21 @@ class TranslationImageRequest(BaseModel):
     source_language: Literal["auto", "ja", "ko", "en"]
     target_language: Literal["zh-Hant"]
     reading_order: Literal["auto", "ltr", "rtl"]
+
+
+class TranslationPageRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    request_id: UUID
+    page_url: AnyHttpUrl
+    images: list[ImageSource] = Field(min_length=1, max_length=50)
+    source_language: Literal["auto", "ja", "ko", "en"]
+    target_language: Literal["zh-Hant"]
+    reading_order: Literal["auto", "ltr", "rtl"]
+
+    @model_validator(mode="after")
+    def _unique_client_image_ids(self) -> "TranslationPageRequest":
+        identifiers = [image.client_image_id for image in self.images]
+        if len(identifiers) != len(set(identifiers)):
+            raise ValueError("Page images must have unique client_image_id values")
+        return self

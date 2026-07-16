@@ -146,6 +146,16 @@
             "title": "Request Id",
             "type": "string"
           },
+          "timing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TranslationImageTiming"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "warnings": {
             "items": {
               "type": "string"
@@ -164,6 +174,266 @@
           "warnings"
         ],
         "title": "TranslationImageResponse",
+        "type": "object"
+      },
+      "TranslationImageTiming": {
+        "additionalProperties": false,
+        "properties": {
+          "fetch_ms": {
+            "minimum": 0.0,
+            "title": "Fetch Ms",
+            "type": "number"
+          },
+          "gemini_calls": {
+            "minimum": 0.0,
+            "title": "Gemini Calls",
+            "type": "integer"
+          },
+          "gemini_ms": {
+            "minimum": 0.0,
+            "title": "Gemini Ms",
+            "type": "number"
+          },
+          "ocr_cache_hit": {
+            "title": "Ocr Cache Hit",
+            "type": "boolean"
+          },
+          "ocr_ms": {
+            "minimum": 0.0,
+            "title": "Ocr Ms",
+            "type": "number"
+          },
+          "output_region_count": {
+            "minimum": 0.0,
+            "title": "Output Region Count",
+            "type": "integer"
+          },
+          "queue_wait_ms": {
+            "minimum": 0.0,
+            "title": "Queue Wait Ms",
+            "type": "number"
+          },
+          "source_region_count": {
+            "minimum": 0.0,
+            "title": "Source Region Count",
+            "type": "integer"
+          },
+          "total_ms": {
+            "minimum": 0.0,
+            "title": "Total Ms",
+            "type": "number"
+          }
+        },
+        "required": [
+          "fetch_ms",
+          "ocr_ms",
+          "gemini_ms",
+          "total_ms",
+          "queue_wait_ms",
+          "ocr_cache_hit",
+          "source_region_count",
+          "output_region_count",
+          "gemini_calls"
+        ],
+        "title": "TranslationImageTiming",
+        "type": "object"
+      },
+      "TranslationPageFailure": {
+        "additionalProperties": false,
+        "properties": {
+          "client_image_id": {
+            "minLength": 1,
+            "title": "Client Image Id",
+            "type": "string"
+          },
+          "code": {
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": ["client_image_id", "code"],
+        "title": "TranslationPageFailure",
+        "type": "object"
+      },
+      "TranslationPageProgress": {
+        "additionalProperties": false,
+        "properties": {
+          "completed": {
+            "minimum": 0.0,
+            "title": "Completed",
+            "type": "integer"
+          },
+          "failed": {
+            "minimum": 0.0,
+            "title": "Failed",
+            "type": "integer"
+          },
+          "successful": {
+            "minimum": 0.0,
+            "title": "Successful",
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": ["total", "completed", "successful", "failed"],
+        "title": "TranslationPageProgress",
+        "type": "object"
+      },
+      "TranslationPageRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/ImageSource"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Images",
+            "type": "array"
+          },
+          "page_url": {
+            "format": "uri",
+            "minLength": 1,
+            "title": "Page Url",
+            "type": "string"
+          },
+          "reading_order": {
+            "enum": ["auto", "ltr", "rtl"],
+            "title": "Reading Order",
+            "type": "string"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "source_language": {
+            "enum": ["auto", "ja", "ko", "en"],
+            "title": "Source Language",
+            "type": "string"
+          },
+          "target_language": {
+            "const": "zh-Hant",
+            "title": "Target Language",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "page_url",
+          "images",
+          "source_language",
+          "target_language",
+          "reading_order"
+        ],
+        "title": "TranslationPageRequest",
+        "type": "object"
+      },
+      "TranslationPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "failures": {
+            "items": {
+              "$ref": "#/components/schemas/TranslationPageFailure"
+            },
+            "title": "Failures",
+            "type": "array"
+          },
+          "progress": {
+            "$ref": "#/components/schemas/TranslationPageProgress"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/TranslationImageResponse"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "timing": {
+            "$ref": "#/components/schemas/TranslationPageTiming"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": ["request_id", "results", "failures", "progress", "warnings", "timing"],
+        "title": "TranslationPageResponse",
+        "type": "object"
+      },
+      "TranslationPageTiming": {
+        "additionalProperties": false,
+        "properties": {
+          "cold_start_ms": {
+            "minimum": 0.0,
+            "title": "Cold Start Ms",
+            "type": "number"
+          },
+          "fetch_ms": {
+            "minimum": 0.0,
+            "title": "Fetch Ms",
+            "type": "number"
+          },
+          "gemini_calls": {
+            "minimum": 0.0,
+            "title": "Gemini Calls",
+            "type": "integer"
+          },
+          "gemini_ms": {
+            "minimum": 0.0,
+            "title": "Gemini Ms",
+            "type": "number"
+          },
+          "ocr_cache_hits": {
+            "minimum": 0.0,
+            "title": "Ocr Cache Hits",
+            "type": "integer"
+          },
+          "ocr_ms": {
+            "minimum": 0.0,
+            "title": "Ocr Ms",
+            "type": "number"
+          },
+          "queue_wait_ms": {
+            "minimum": 0.0,
+            "title": "Queue Wait Ms",
+            "type": "number"
+          },
+          "total_ms": {
+            "minimum": 0.0,
+            "title": "Total Ms",
+            "type": "number"
+          },
+          "warm_execution": {
+            "title": "Warm Execution",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "total_ms",
+          "fetch_ms",
+          "ocr_ms",
+          "gemini_ms",
+          "queue_wait_ms",
+          "cold_start_ms",
+          "gemini_calls",
+          "ocr_cache_hits",
+          "warm_execution"
+        ],
+        "title": "TranslationPageTiming",
         "type": "object"
       },
       "TranslationRegion": {
@@ -239,6 +509,34 @@
         "title": "TranslationRegion",
         "type": "object"
       },
+      "TranslationWarmupResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "diagnostic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnostic"
+          },
+          "initialization_ms": {
+            "minimum": 0.0,
+            "title": "Initialization Ms",
+            "type": "number"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          }
+        },
+        "required": ["ready", "initialization_ms"],
+        "title": "TranslationWarmupResponse",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -286,9 +584,9 @@
     }
   },
   "info": {
-    "summary": "M0 mock compatibility plus M1 OCR translation vertical slice",
+    "summary": "Private-LAN manga translation with M0 compatibility and M2.1 page batching",
     "title": "Penguin Translator API",
-    "version": "0.2.0-m1"
+    "version": "0.3.0-m2.1"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -353,6 +651,76 @@
           }
         ],
         "summary": "Translate Image",
+        "tags": ["translation"]
+      }
+    },
+    "/v1/translate-page": {
+      "post": {
+        "description": "Translate a page with bounded image preparation and cross-image Gemini batches.",
+        "operationId": "translate_page_v1_translate_page_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranslationPageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranslationPageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Translate Page",
+        "tags": ["translation"]
+      }
+    },
+    "/v1/warmup": {
+      "post": {
+        "description": "Initialize the local OCR pipeline without sending content to Gemini.",
+        "operationId": "warmup_translation_v1_warmup_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranslationWarmupResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Warmup Translation",
         "tags": ["translation"]
       }
     }

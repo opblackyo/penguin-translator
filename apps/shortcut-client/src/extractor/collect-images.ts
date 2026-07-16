@@ -51,6 +51,14 @@ export interface ExtractionResult {
   version: string;
   page_url: string;
   images: ExtractedImage[];
+  batch_request: {
+    request_id: string;
+    page_url: string;
+    images: ExtractedImage[];
+    source_language: "auto";
+    target_language: "zh-Hant";
+    reading_order: "auto";
+  };
   warnings: string[];
   control?: {
     retry_requested: string[];

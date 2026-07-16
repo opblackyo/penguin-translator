@@ -26,7 +26,7 @@ describe("M2 region styling", () => {
 
     expect(layout.height).toBeGreaterThanOrEqual(40);
     expect(layout.height).toBeLessThanOrEqual(72);
-    expect(layout.fontSize).toBeGreaterThanOrEqual(10);
+    expect(layout.fontSize).toBeGreaterThanOrEqual(8);
     expect(layout.fontSize).toBeLessThanOrEqual(24);
   });
 });

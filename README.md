@@ -14,9 +14,11 @@ fixture 實測：安全圖片取得、PaddleOCR、Gemini structured batch transl
 且沒有 JavaScript timeout；實機 intentional partial API failure 仍為 UNVERIFIED。這不代表公開
 部署、真實商業漫畫網站全面相容或複雜背景修補完成。
 
-M2 正在準備私人 Alpha：加入精確本機 token、`host:port` 圖片例外、統一下載錯誤、最多
-兩張重型請求並行、長頁／lazy／srcset／duplicate extractor、自製長條測試頁，以及更不透出
-原文的翻譯框與進度控制。M2 仍不包含公開部署、特定網站繞過、Extension 或 inpainting。
+M2 私人實頁已完成 15 / 15 圖片的 HTTPS 下載、OCR、Gemini 與 Safari overlay 功能驗證。
+M2.1 新增一次整頁 `/v1/translate-page`、有界 worker、跨圖片 Gemini chunks、OCR 暖機、
+保守多行 region 合併、overlay 碰撞避讓與完成狀態文字。本機 15 圖等效排程基準已超過
+50% 改善門檻；實際 iPhone 效能與新版 overlay 可讀性仍須重測，因此尚不宣稱日常可用。
+M2 仍不包含公開部署、特定網站繞過、Extension 或 inpainting。
 
 ## 技術組合
 
@@ -32,11 +34,13 @@ M2 正在準備私人 Alpha：加入精確本機 token、`host:port` 圖片例�
 ```text
 pnpm install --frozen-lockfile
 uv sync --project services/api --locked
+pnpm backend:sync:ocr
 pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm backend:benchmark:m2
 ```
 
 本機 M1 Gemini 設定從 Repository 根目錄的 `.env` 載入；該檔案已被 Git ignore，且

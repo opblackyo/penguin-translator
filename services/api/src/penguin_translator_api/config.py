@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     ocr_cache_ttl_seconds: float = Field(default=300, gt=0)
     ocr_cache_max_entries: int = Field(default=64, gt=0)
     max_concurrent_translations: int = Field(default=2, ge=1, le=3)
+    page_batch_max_images: int = Field(default=30, ge=1, le=50)
+    gemini_batch_max_regions: int = Field(default=80, ge=1, le=200)
+    gemini_batch_max_characters: int = Field(default=12_000, ge=100, le=50_000)
 
     @field_validator("dev_allowed_image_targets", mode="before")
     @classmethod

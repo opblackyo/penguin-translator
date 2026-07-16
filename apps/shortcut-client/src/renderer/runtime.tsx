@@ -13,6 +13,7 @@ import { findImageByClientId } from "../shared/image-identity";
 import { VERSION } from "../shared/version";
 import { CONTROL_PANEL_STYLE, ControlPanel, type ProgressState } from "./control-panel";
 import { mapPolygonToDocument, type Point } from "./coordinate-mapper";
+import { layoutOverlayRegions } from "./overlay-layout";
 import { type OverlayRegion, OverlayRoot } from "./overlay-root";
 import { detectRegionBackground, type RegionBackgroundMode } from "./region-style";
 
@@ -163,6 +164,8 @@ export function mount(
       if (!image) {
         continue;
       }
+      const rect = image.getBoundingClientRect();
+      const imageRegions: OverlayRegion[] = [];
       for (const region of result.regions) {
         const key = `${result.client_image_id}:${region.region_id}`;
         let backgroundMode = backgroundModes.get(key);
@@ -174,19 +177,28 @@ export function mount(
               : detectRegionBackground(image, region.polygon as Point[]);
           backgroundModes.set(key, backgroundMode);
         }
-        regions.push({
+        imageRegions.push({
           key,
           position: mapPolygonToDocument(
             image,
             region.polygon as Point[],
             result.image_width,
             result.image_height,
+            rect,
           ),
           sourceText: region.source_text,
           translatedText: region.translated_text,
           backgroundMode,
         });
       }
+      regions.push(
+        ...layoutOverlayRegions(imageRegions, {
+          left: window.scrollX + rect.left,
+          top: window.scrollY + rect.top,
+          right: window.scrollX + rect.right,
+          bottom: window.scrollY + rect.bottom,
+        }),
+      );
     }
     render(<OverlayRoot regions={regions} textMode={textMode} />, overlay);
   };

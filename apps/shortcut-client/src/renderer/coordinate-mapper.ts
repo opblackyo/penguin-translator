@@ -12,12 +12,13 @@ export function mapPolygonToDocument(
   polygon: Point[],
   sourceWidth: number,
   sourceHeight: number,
+  imageRect?: DOMRect,
 ): PositionedRegion {
   if (polygon.length !== 4 || sourceWidth <= 0 || sourceHeight <= 0) {
     throw new Error("A four-point polygon and positive source dimensions are required.");
   }
 
-  const rect = image.getBoundingClientRect();
+  const rect = imageRect ?? image.getBoundingClientRect();
   const xs = polygon.map(([x]) => x);
   const ys = polygon.map(([, y]) => y);
   const minX = Math.min(...xs);

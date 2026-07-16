@@ -27,5 +27,8 @@ def make_settings(**overrides: object) -> Settings:
         ocr_cache_ttl_seconds=60,
         ocr_cache_max_entries=8,
         max_concurrent_translations=2,
+        page_batch_max_images=30,
+        gemini_batch_max_regions=80,
+        gemini_batch_max_characters=12_000,
     )
     return settings.model_copy(update=overrides)

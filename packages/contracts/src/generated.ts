@@ -41,6 +41,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/translate-page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Translate Page
+         * @description Translate a page with bounded image preparation and cross-image Gemini batches.
+         */
+        post: operations["translate_page_v1_translate_page_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/warmup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Warmup Translation
+         * @description Initialize the local OCR pipeline without sending content to Gemini.
+         */
+        post: operations["warmup_translation_v1_warmup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -123,8 +163,115 @@ export interface components {
              * Format: uuid
              */
             request_id: string;
+            timing?: components["schemas"]["TranslationImageTiming"] | null;
             /** Warnings */
             warnings: string[];
+        };
+        /** TranslationImageTiming */
+        TranslationImageTiming: {
+            /** Fetch Ms */
+            fetch_ms: number;
+            /** Gemini Calls */
+            gemini_calls: number;
+            /** Gemini Ms */
+            gemini_ms: number;
+            /** Ocr Cache Hit */
+            ocr_cache_hit: boolean;
+            /** Ocr Ms */
+            ocr_ms: number;
+            /** Output Region Count */
+            output_region_count: number;
+            /** Queue Wait Ms */
+            queue_wait_ms: number;
+            /** Source Region Count */
+            source_region_count: number;
+            /** Total Ms */
+            total_ms: number;
+        };
+        /** TranslationPageFailure */
+        TranslationPageFailure: {
+            /** Client Image Id */
+            client_image_id: string;
+            /** Code */
+            code: string;
+        };
+        /** TranslationPageProgress */
+        TranslationPageProgress: {
+            /** Completed */
+            completed: number;
+            /** Failed */
+            failed: number;
+            /** Successful */
+            successful: number;
+            /** Total */
+            total: number;
+        };
+        /** TranslationPageRequest */
+        TranslationPageRequest: {
+            /** Images */
+            images: components["schemas"]["ImageSource"][];
+            /**
+             * Page Url
+             * Format: uri
+             */
+            page_url: string;
+            /**
+             * Reading Order
+             * @enum {string}
+             */
+            reading_order: "auto" | "ltr" | "rtl";
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /**
+             * Source Language
+             * @enum {string}
+             */
+            source_language: "auto" | "ja" | "ko" | "en";
+            /**
+             * Target Language
+             * @constant
+             */
+            target_language: "zh-Hant";
+        };
+        /** TranslationPageResponse */
+        TranslationPageResponse: {
+            /** Failures */
+            failures: components["schemas"]["TranslationPageFailure"][];
+            progress: components["schemas"]["TranslationPageProgress"];
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Results */
+            results: components["schemas"]["TranslationImageResponse"][];
+            timing: components["schemas"]["TranslationPageTiming"];
+            /** Warnings */
+            warnings: string[];
+        };
+        /** TranslationPageTiming */
+        TranslationPageTiming: {
+            /** Cold Start Ms */
+            cold_start_ms: number;
+            /** Fetch Ms */
+            fetch_ms: number;
+            /** Gemini Calls */
+            gemini_calls: number;
+            /** Gemini Ms */
+            gemini_ms: number;
+            /** Ocr Cache Hits */
+            ocr_cache_hits: number;
+            /** Ocr Ms */
+            ocr_ms: number;
+            /** Queue Wait Ms */
+            queue_wait_ms: number;
+            /** Total Ms */
+            total_ms: number;
+            /** Warm Execution */
+            warm_execution: boolean;
         };
         /** TranslationRegion */
         TranslationRegion: {
@@ -154,6 +301,15 @@ export interface components {
             source_text: string;
             /** Translated Text */
             translated_text: string;
+        };
+        /** TranslationWarmupResponse */
+        TranslationWarmupResponse: {
+            /** Diagnostic */
+            diagnostic?: string | null;
+            /** Initialization Ms */
+            initialization_ms: number;
+            /** Ready */
+            ready: boolean;
         };
         /** ValidationError */
         ValidationError: {
@@ -226,6 +382,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    translate_page_v1_translate_page_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TranslationPageRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranslationPageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    warmup_translation_v1_warmup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranslationWarmupResponse"];
                 };
             };
         };

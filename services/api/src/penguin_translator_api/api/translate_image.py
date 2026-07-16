@@ -5,8 +5,16 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from penguin_translator_api.contracts.requests import TranslationImageRequest
-from penguin_translator_api.contracts.responses import TranslationImageResponse, TranslationRegion
+from penguin_translator_api.contracts.requests import (
+    TranslationImageRequest,
+    TranslationPageRequest,
+)
+from penguin_translator_api.contracts.responses import (
+    TranslationImageResponse,
+    TranslationPageResponse,
+    TranslationRegion,
+    TranslationWarmupResponse,
+)
 from penguin_translator_api.services.image_fetcher import (
     ImageFetchError,
     ImageFetchTimeoutError,
@@ -41,6 +49,37 @@ def _verify_translation_token(
             detail={"code": "LOCAL_API_TOKEN_INVALID"},
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+@router.post("/warmup", response_model=TranslationWarmupResponse)
+async def warmup_translation(
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
+    services: Annotated[RuntimeServices, Depends(get_runtime_services)],
+) -> TranslationWarmupResponse:
+    """Initialize the local OCR pipeline without sending content to Gemini."""
+    _verify_translation_token(credentials, services)
+    return await services.warmup()
+
+
+@router.post("/translate-page", response_model=TranslationPageResponse)
+async def translate_page(
+    request: TranslationPageRequest,
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
+    services: Annotated[RuntimeServices, Depends(get_runtime_services)],
+) -> TranslationPageResponse:
+    """Translate a page with bounded image preparation and cross-image Gemini batches."""
+    _verify_translation_token(credentials, services)
+    try:
+        return await services.translate_page(request)
+    except ValueError as error:
+        if str(error) == "PAGE_BATCH_TOO_LARGE":
+            raise HTTPException(status_code=413, detail={"code": str(error)}) from error
+        raise
+    except (OCRProviderUnavailableError, TranslatorConfigurationError) as error:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "REAL_TRANSLATION_NOT_CONFIGURED"},
+        ) from error
 
 
 @router.post("/translate-image", response_model=TranslationImageResponse)

@@ -36,7 +36,11 @@ export function ControlPanel({
     <div class="panel">
       <strong>企鵝翻譯機 M2</strong>
       <span class="progress" aria-live="polite">
-        {cancelled ? "已取消" : `正在翻譯 ${progress.completed} / ${progress.total}`}
+        {cancelled
+          ? "已取消"
+          : progress.completed >= progress.total
+            ? `完成 ${progress.completed} / ${progress.total}`
+            : `正在翻譯 ${progress.completed} / ${progress.total}`}
         {` · 成功 ${progress.successful} · 失敗 ${progress.failed}`}
       </span>
       <button

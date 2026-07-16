@@ -1,4 +1,4 @@
-# iPhone Shortcut Setup (M0)
+# iPhone Shortcut Setup (M0–M2.1)
 
 This guide uses Apple's official English action names. The Owner has observed `重複` for **Repeat
 with Each** on an iPhone 12 Pro running iOS 26.5. Other Chinese action names remain **UNVERIFIED**
@@ -370,3 +370,61 @@ For the physical retest:
 
 The physical retest must record extractor completion, elapsed behavior, image count, warnings, and
 whether API processing begins. General real-site compatibility remains **UNVERIFIED**.
+
+## 13. M2.1：改為一次整頁 Batch Request
+
+M2.1 保留兩段 **Run JavaScript on Web Page**，但以一次 `/v1/translate-page` 取代第 6 節的
+逐張 **Repeat with Each** API 呼叫。下列說明使用繁體中文描述操作；動作名稱仍採 Apple
+官方英文名稱。除實機已確認的「重複」外，其他中文動作名稱不得據此視為已驗證。
+
+先重新執行 `pnpm build`，並把最新版 `extractor.iife.js` 與 `renderer.iife.js` 貼入原本兩個
+JavaScript 動作。新版 extractor 除了既有 `images`，還會直接產生符合 API 契約的
+`batch_request`；捷徑不必手工建立巢狀 images Dictionary。
+
+### 可選的冷啟動暖機
+
+後端重啟後，可先用捷徑執行一次暖機；這只初始化本機 OCR pipeline，不會呼叫 Gemini：
+
+1. 加入 **URL**，內容為 `http://<WINDOWS_LAN_IPV4>:8000/v1/warmup`。
+2. 加入 **Get Contents of URL**，Method 選 `POST`。
+3. 在 Headers 加入 `Authorization: Bearer <LOCAL_RANDOM_TOKEN>`，不要加入 Request Body。
+4. 以 **Quick Look** 確認 `ready` 為 `true`。若為 `false`，查看 `diagnostic`；回應不會包含
+   Key、Token、圖片 URL 或文字。
+
+普通 CI 不執行此暖機，也不會下載大型模型。實機計時必須分別標示 cold（後端剛重啟且
+未暖機）與 warm（暖機完成或同頁 OCR cache 命中）。
+
+### 由逐張 Repeat 遷移為單次 POST
+
+保留第 2–4 節的 Share Sheet、`Safari Page` 與第一個 **Run JavaScript on Web Page**，然後：
+
+1. 以 **Get Dictionary from Input** 解析 extractor JSON，再以 **Set Variable** 存成
+   `Extraction`。
+2. 以 **Get Dictionary Value** 從 `Extraction` 取得 key `batch_request`，再以
+   **Set Variable** 存成 `Batch Request`。
+3. 以 **Quick Look** 確認其中有 `request_id`、`page_url`、完整 `images`、
+   `source_language: auto`、`target_language: zh-Hant`、`reading_order: auto`。
+4. 加入 **URL**：`http://<WINDOWS_LAN_IPV4>:8000/v1/translate-page`。
+5. 加入一個 **Get Contents of URL**，設定 Method `POST`、Header
+   `Authorization: Bearer <LOCAL_RANDOM_TOKEN>`、Request Body `JSON`，JSON 值直接選
+   `Batch Request` Dictionary。
+6. 以 **Set Variable** 把完整回應存成 `Page Response`。不要再使用逐張
+   **Repeat with Each**、`Successful Results` 或手工累積 `Failures`。
+7. 以 **Quick Look** 確認 `results`、`failures`、`progress` 與 `timing`；部分圖片失敗時
+   HTTP 請求仍成功，失敗項目會在 `failures` 內以 `client_image_id` 和安全 `code` 表示。
+8. 第二個 **Run JavaScript on Web Page** 仍以 `Safari Page` 為 webpage input。在 bundle
+   前放入 `const shortcutInput = PAGE_RESPONSE_MAGIC_VARIABLE;`，並把 `Page Response`
+   Magic Variable 插在等號後、不加引號。其後貼上完整 `renderer.iife.js`。
+9. 以 **Quick Look** 檢查 renderer completion 的 `ok: true` 與 `rendered_regions`。
+
+Batch 請求執行期間，iOS 的 **Get Contents of URL** 不能中途取消；取消界線是 API 呼叫前
+或回應後。`重試失敗圖片` 仍會把失敗 ID 留給下一次 extractor；下一次執行產生的
+`batch_request.images` 只包含待重試項目。重複注入仍會先移除舊控制面板與 overlays。
+
+### M2.1 實機重測記錄
+
+在同一個 15 圖私人頁面分別記錄 cold 與 warm 的 `timing.total_ms`、成功／失敗數、
+`gemini_calls`、控制面板完成文字、重疊框及原文是否透出。Repository 的本機基準只驗證
+排程與 batching 改善，不等同真實 iPhone、PaddleOCR 或 Gemini 延遲。下列項目在 Owner
+完成新版捷徑前均為 **UNVERIFIED**：至少 50% 實機改善、warm 約 60 秒、partial failure、
+新 overlay 可讀性，以及最終 daily-use readiness。

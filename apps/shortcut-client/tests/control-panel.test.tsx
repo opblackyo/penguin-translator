@@ -30,4 +30,21 @@ describe("ControlPanel", () => {
     expect(shadow.querySelector(".panel")?.textContent).toContain("重試失敗圖片");
     expect(document.head.querySelector("style")).toBeNull();
   });
+
+  it("uses completed wording when all images have finished", () => {
+    const mount = document.createElement("div");
+    render(
+      <ControlPanel
+        onRemove={() => undefined}
+        onTextModeChange={() => undefined}
+        onCancel={() => undefined}
+        onRetryFailures={() => undefined}
+        progress={{ total: 15, completed: 15, successful: 15, failed: 0 }}
+      />,
+      mount,
+    );
+
+    expect(mount.textContent).toContain("完成 15 / 15");
+    expect(mount.textContent).not.toContain("正在翻譯");
+  });
 });

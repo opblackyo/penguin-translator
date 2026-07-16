@@ -26,6 +26,14 @@ describe("extractor entry", () => {
     expect(typeof serialized).toBe("string");
     expect(() => JSON.parse(serialized as string)).not.toThrow();
     expect(JSON.parse(serialized as string)).toMatchObject({ images: [], warnings: [] });
+    expect(JSON.parse(serialized as string)).toMatchObject({
+      batch_request: {
+        images: [],
+        source_language: "auto",
+        target_language: "zh-Hant",
+        reading_order: "auto",
+      },
+    });
     expect(JSON.parse(serialized as string)).not.toHaveProperty("debug");
   });
 
