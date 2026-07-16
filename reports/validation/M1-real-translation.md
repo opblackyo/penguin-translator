@@ -10,10 +10,14 @@ Gemini live smoke: PASS
 Live FastAPI round trip: PASS
 Automated Evidence: PASS
 Windows API Evidence: PASS
-iPhone real translation: UNVERIFIED
-Safari real overlay: UNVERIFIED
-Final Human Gate: PENDING
-Final status: READY_FOR_IPHONE_REAL_TRANSLATION_TEST
+iPhone Real Translation: PASS
+Safari Real Overlay: PASS
+Controls: PASS
+Scroll / Orientation: PASS
+Repeated Injection: PASS
+Partial Failure: UNVERIFIED
+Final Human Gate: PASS_WITH_ONE_UNVERIFIED_SCENARIO
+Final Status: M1_IPHONE_REAL_TRANSLATION_PASS
 ```
 
 ## Implemented path
@@ -47,9 +51,18 @@ Gemini configuration returns a diagnostic error and never falls back to `測試�
 - The local FastAPI round trip passed against the self-created Korean fixture: the real downloader,
   PaddleOCR, one Gemini batch, and response contract produced three translated regions with no
   warnings. Both loopback-only test services were stopped afterward.
-- No iPhone M1 test has been performed. M0 physical-device evidence remains in the M0 report.
+- Physical-device evidence was recorded on an iPhone 12 Pro running iOS 26.5. With
+  `source_language = auto` and `reading_order = auto`, the Shortcut returned `ok = true`,
+  `rendered_regions = 9`, and no warnings. The Korean, English, and mixed fixtures displayed real
+  Traditional Chinese translations; the empty fixture displayed no translation box.
+- Safari overlay, hide, show, remove-all, page-scroll alignment, orientation-change alignment, and
+  repeated injection passed. Repeated execution left one control panel, produced no duplicate
+  overlays, and did not trigger a JavaScript timeout.
+- Intentional partial API failure has not been tested on the physical iPhone and remains
+  `UNVERIFIED`; its automated coverage is not represented as physical-device evidence.
 
-## Remaining gates
+## Evidence boundary
 
-1. Change only `source_language` and `reading_order` to `auto` in the existing iPhone Shortcut.
-2. Record real translated overlays on the iPhone.
+M1 is a private-LAN fixture vertical slice. This evidence does not establish public deployment,
+general compatibility with commercial manga websites, complex-background reconstruction, or
+physical-iPhone partial-failure handling.

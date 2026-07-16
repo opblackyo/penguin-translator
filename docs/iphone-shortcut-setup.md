@@ -269,3 +269,20 @@ PowerShell process:
 $env:PENGUIN_TRANSLATOR_M1_FIXTURE_URL = "http://<WINDOWS_LAN_IPV4>:4173/m1-test-page/assets/korean-dialogue.png"
 pnpm backend:test:m1-live
 ```
+
+### Confirmed M1 physical-device evidence
+
+The Owner completed this flow on an iPhone 12 Pro running iOS 26.5 with
+`source_language = auto` and `reading_order = auto`:
+
+- Korean, English, and mixed self-created fixtures displayed real Traditional Chinese translations.
+- The empty fixture displayed no translation box.
+- Renderer completion reported `ok = true`, `rendered_regions = 9`, and no warnings.
+- Safari overlay, hide, show, remove all, page-scroll alignment, orientation-change alignment, and
+  repeated execution passed.
+- Repeated execution left one control panel and no duplicate overlays.
+- No JavaScript timeout occurred.
+
+An intentional partial API failure has not been tested through the physical iPhone Shortcut and
+remains `UNVERIFIED`. The M1 result covers the repository's self-created fixtures over a private LAN;
+it does not claim general compatibility with real commercial manga sites or public deployment.
