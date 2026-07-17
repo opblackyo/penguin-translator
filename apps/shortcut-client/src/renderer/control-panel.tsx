@@ -19,6 +19,7 @@ interface ControlPanelProps {
   onCancel: () => void;
   onRetryFailures: () => void;
   progress: ProgressState;
+  timingLabel?: string;
 }
 
 export function ControlPanel({
@@ -27,6 +28,7 @@ export function ControlPanel({
   onCancel,
   onRetryFailures,
   progress,
+  timingLabel,
 }: ControlPanelProps) {
   const [visible, setVisible] = useState(true);
   const [textMode, setTextMode] = useState<"source" | "translation">("translation");
@@ -43,6 +45,7 @@ export function ControlPanel({
             : `正在翻譯 ${progress.completed} / ${progress.total}`}
         {` · 成功 ${progress.successful} · 失敗 ${progress.failed}`}
       </span>
+      {timingLabel ? <span class="timing">{timingLabel}</span> : null}
       <button
         type="button"
         onClick={() => {
@@ -106,6 +109,7 @@ export const CONTROL_PANEL_STYLE = `
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
   }
   .progress { white-space: nowrap; }
+  .timing { white-space: nowrap; color: #cbd5e1; }
   button {
     border: 0;
     border-radius: 6px;

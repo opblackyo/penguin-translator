@@ -18,7 +18,11 @@ M2 私人實頁已完成 15 / 15 圖片的 HTTPS 下載、OCR、Gemini 與 Safar
 M2.1 新增一次整頁 `/v1/translate-page`、有界 worker、跨圖片 Gemini chunks、OCR 暖機、
 保守多行 region 合併、overlay 碰撞避讓與完成狀態文字。本機 15 圖等效排程基準已超過
 50% 改善門檻；實際 iPhone 效能與新版 overlay 可讀性仍須重測，因此尚不宣稱日常可用。
-M2 仍不包含公開部署、特定網站繞過、Extension 或 inpainting。
+M2 仍不包含公開部署、特定網站繞過、商店上架的 Extension 或 inpainting。
+
+M2.2 將 iOS Shortcut 縮成單一 Base64URL form transport，後端 adapter 負責完整 request
+驗證並直接重用 M2.1 page pipeline。主要開發殼層改為私人 Edge Manifest V3 unpacked
+extension 與 Windows dev harness；iPhone 僅保留最後實機 Gate。這不授權公開部署或商店上架。
 
 ## 技術組合
 
@@ -41,6 +45,8 @@ pnpm typecheck
 pnpm test
 pnpm build
 pnpm backend:benchmark:m2
+pnpm extension:build
+pnpm test:translator
 ```
 
 本機 M1 Gemini 設定從 Repository 根目錄的 `.env` 載入；該檔案已被 Git ignore，且
@@ -67,6 +73,12 @@ pnpm test-page:lan
 ```
 
 Mock API 使用 repository script 明確設定的 `8000` port，自拍 SVG 測試頁使用 `4173` port。實際 LAN IPv4 與完整 iPhone 捷徑步驟見 [`docs/iphone-shortcut-setup.md`](docs/iphone-shortcut-setup.md)，不得將實際 LAN IP 寫入 Git。
+
+桌面優先開發可使用 `pnpm dev:translator`，再開啟
+`http://127.0.0.1:4173/dev-harness/`。Edge unpacked build 與最小權限設定見
+[`docs/edge-development-extension.md`](docs/edge-development-extension.md)。M2.1 手工 nested
+JSON Shortcut 已 deprecated；新的 iPhone 流程只傳 `shortcut_payload` 與
+`renderer_payload` 兩個純文字欄位。
 
 ## M0 限制
 

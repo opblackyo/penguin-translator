@@ -3,18 +3,19 @@
 ## Scope
 
 ```text
-private Safari webpage
-→ bounded long-page extractor
+private Safari/Edge webpage
+→ shared bounded long-page extractor
+→ Shortcut-safe adapter or Edge background request
 → exact host:port ImageFetcher
 → PaddleOCR
 → cross-image bounded Gemini batches
-→ readable renderer overlay
+→ shared renderer overlay
 → isolated per-image failures
 ```
 
-This milestone is private-LAN readiness only. It does not include public deployment, named-site
-bypasses, anti-bot evasion, Edge/Safari extensions, inpainting, accounts, databases, queues, or a
-second translation provider.
+This milestone is private-LAN readiness only. It includes a private, unpacked Edge development
+extension, but does not include public deployment, named-site bypasses, anti-bot evasion, extension
+store distribution, inpainting, accounts, databases, queues, or a second translation provider.
 
 ## Implemented evidence
 
@@ -45,6 +46,15 @@ second translation provider.
   compatible orientation and detected language. Renderer layout suppresses near-identical regions,
   centers bounded expansion, avoids collisions where space exists, uses solid white bubble covers,
   and reports `完成` when all images finish.
+- M2.2 adds a strict, size-limited Base64URL form adapter that authenticates before reading the
+  request body, validates the decoded value with the existing page contract, reuses the M2.1 page
+  pipeline, and returns one encoded renderer payload plus a safe aggregate summary.
+- The production extractor emits the complete semantic request as `shortcut_payload`; the renderer
+  wrapper accepts one marked Base64URL value. The previous M2.1 hand-built nested Shortcut JSON
+  flow is deprecated because physical iOS testing collapsed the image list into one dictionary and
+  produced a `422 list_type` response.
+- A private Manifest V3 Edge development extension and a localhost desktop harness reuse the shared
+  extractor and renderer. Endpoint and token are runtime settings, never production bundle values.
 
 ## Status
 
@@ -64,12 +74,17 @@ M2.1 Deterministic 15-Image Benchmark: PASS
 M2.1 iPhone Performance Retest: UNVERIFIED
 M2.1 Overlay Readability Retest: UNVERIFIED
 Intentional Partial Failure on iPhone: UNVERIFIED
-Final Status: READY_FOR_M2_PERFORMANCE_IPHONE_RETEST
+M2.2 Shortcut Adapter Automated Evidence: PASS
+M2.2 Chromium Unpacked Extension Evidence: PASS
+M2.2 WebKit Adapter Round-Trip Evidence: PASS
+M2.2 Desktop Harness Evidence: PASS
+M2.2 Thin iPhone Shortcut Evidence: UNVERIFIED
+Final Status: READY_FOR_THIN_SHORTCUT_RETEST
 ```
 
-The complete automated gate covers 45 frontend unit tests, 59 backend tests, ten Playwright WebKit
-E2E scenarios, generated-contract verification, static typing, formatting, lint, and production
-bundles.
+The complete automated gate covers 51 frontend unit tests, 68 backend tests, one Chromium
+unpacked-extension scenario, 12 Playwright WebKit scenarios, generated-contract verification,
+static typing, formatting, lint, production bundles, and the deterministic M2 batch benchmark.
 The WebKit suite exercises the self-created M2 long page and keeps the M0/M1 and partial-failure
 paths passing. No Gemini request or model download is part of the general gate.
 
@@ -128,14 +143,35 @@ The opt-in deterministic benchmark models a self-created 15-image equivalent wor
 network, commercial content, Paddle model downloads, or Gemini calls. Three-run medians recorded:
 
 ```text
-sequential cold: 915.1 ms
-sequential warm: 476.7 ms
-batch concurrency 2 cold: 378.9 ms (58.6% improvement)
-batch concurrency 2 warm: 126.0 ms (73.6% improvement)
-batch concurrency 3 cold: 274.0 ms (70.1% improvement)
-batch concurrency 3 warm: 99.5 ms (79.1% improvement)
+sequential cold: 909.5 ms
+sequential warm: 470.6 ms
+batch concurrency 2 cold: 380.7 ms (58.1% improvement)
+batch concurrency 2 warm: 129.1 ms (72.6% improvement)
+batch concurrency 3 cold: 275.5 ms (69.7% improvement)
+batch concurrency 3 warm: 102.2 ms (78.3% improvement)
 ```
 
 This passes the 50% scheduling benchmark gate but is not a physical latency claim. The Owner must
 replace both production bundles, migrate the Shortcut to `/v1/translate-page`, and record cold/warm
 real-page timing plus overlay readability before the project can claim daily-use performance.
+
+## M2.2 Shortcut transport and desktop-first workflow
+
+The M2.1 physical Shortcut attempt proved that nested Dictionary/List construction is not a stable
+transport boundary: although extraction and Repeat appeared correct, iOS serialized `images` as a
+single dictionary instead of a list. The backend correctly rejected that shape with `422
+list_type`. Continuing to hand-build or debug nested request objects on the phone is deprecated.
+
+The thin Shortcut now carries only `shortcut_payload` to
+`/v1/shortcut/translate-page` as one `application/x-www-form-urlencoded` field, then carries only
+`renderer_payload` into the production renderer wrapper. Base64URL is unpadded, line-break-free,
+UTF-8 JSON. The adapter applies bounded form and decoded-payload limits, exact Bearer authentication,
+safe 4xx errors, existing Pydantic validation, and the existing page translation pipeline. It does
+not log the payload, image URLs, source/translated text, or credentials.
+
+Development and debugging now happen in the unpacked Edge extension and localhost harness first.
+Automated Chromium verifies the actual unpacked Manifest V3 flow; WebKit verifies extractor bundle
+→ adapter → renderer wrapper against self-created fixtures, including repeated renderer injection and
+partial failure. The iPhone is the final physical gate only. The thin iOS 26.5 Shortcut, real-page
+overlay alignment, rotation/scroll behavior, and physical timing remain `UNVERIFIED`; compatibility
+with commercial sites remains site-specific, and public deployment is not authorized.

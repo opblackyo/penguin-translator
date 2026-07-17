@@ -6,7 +6,14 @@ import { defineConfig } from "vitest/config";
 const configDirectory = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(({ mode }) => {
-  const entry = mode === "extractor" ? "extractor" : mode === "renderer" ? "renderer" : null;
+  const entry =
+    mode === "extractor"
+      ? "extractor"
+      : mode === "renderer"
+        ? "renderer"
+        : mode === "renderer-shortcut"
+          ? "renderer-shortcut"
+          : null;
 
   return {
     plugins: [preact()],
@@ -31,7 +38,9 @@ export default defineConfig(({ mode }) => {
             lib: {
               entry: resolve(
                 configDirectory,
-                `src/${entry}/entry.ts${entry === "renderer" ? "x" : ""}`,
+                entry === "renderer-shortcut"
+                  ? "src/renderer/shortcut-entry.tsx"
+                  : `src/${entry}/entry.ts${entry === "renderer" ? "x" : ""}`,
               ),
               name:
                 entry === "extractor" ? "PenguinTranslatorExtractor" : "PenguinTranslatorRenderer",

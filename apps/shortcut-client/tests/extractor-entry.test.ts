@@ -33,6 +33,8 @@ describe("extractor entry", () => {
         target_language: "zh-Hant",
         reading_order: "auto",
       },
+      shortcut_payload: expect.stringMatching(/^[A-Za-z0-9_-]+$/),
+      payload_version: "m2.2-v1",
     });
     expect(JSON.parse(serialized as string)).not.toHaveProperty("debug");
   });

@@ -1,10 +1,14 @@
-# iPhone Shortcut Setup (M0–M2.1)
+# iPhone Shortcut Setup (M0–M2.2)
 
 This guide uses Apple's official English action names. The Owner has observed `重複` for **Repeat
 with Each** on an iPhone 12 Pro running iOS 26.5. Other Chinese action names remain **UNVERIFIED**
 until they are read from the physical device. Apple requires every **Run JavaScript on Web Page**
 action to receive the active Safari webpage, and allows extra data to be inserted into its script with
 Magic Variables.
+
+> M2.2 notice: the nested-JSON and **Repeat with Each** workflows in sections 5–7 and 13 are retained
+> only as historical evidence and are deprecated. New physical testing must use the thin Shortcut in
+> section 14. Do not continue repairing Dictionary/List coercion on the iPhone.
 
 Official references:
 
@@ -428,3 +432,65 @@ Batch 請求執行期間，iOS 的 **Get Contents of URL** 不能中途取消；
 排程與 batching 改善，不等同真實 iPhone、PaddleOCR 或 Gemini 延遲。下列項目在 Owner
 完成新版捷徑前均為 **UNVERIFIED**：至少 50% 實機改善、warm 約 60 秒、partial failure、
 新 overlay 可讀性，以及最終 daily-use readiness。
+
+## 14. M2.2：Thin Shortcut（目前正式流程）
+
+新的捷徑名稱建議為「企鵝翻譯機 Dev」。舊版本可複製並保留為「企鵝翻譯機 M2.1
+Legacy」，但不要再修改其 Repeat、List、Dictionary 或 Combine Text 流程。M2.2 的
+extractor 會把完整 15 圖語意 request 編碼成不含換行的 Base64URL 字串，Shortcut 只傳一個
+form 欄位；後端負責解碼、JSON 解析、Pydantic 驗證與 batch translation。
+
+先執行：
+
+```powershell
+pnpm build
+```
+
+### iOS 26.5 action-by-action
+
+以下為完整結構。Apple 官方英文動作名稱以粗體表示；未經實機讀取的中文名稱仍為
+**UNVERIFIED**。
+
+1. **Set Variable**：輸入使用 `Shortcut Input`，變數名稱 `Safari Page`。
+2. 第一個 **Run JavaScript on Web Page**：webpage input 選 `Safari Page`，貼入完整
+   `apps/shortcut-client/dist/extractor.iife.js`。
+3. **Get Dictionary from Input**：輸入選第一段 JavaScript 的 completion；再以
+   **Get Dictionary Value** 取得 key `shortcut_payload`。這是單一 Text，不要取得
+   `batch_request` 或 `images`。
+4. **URL**：設定
+   `http://<WINDOWS_LAN_IPV4>:8000/v1/shortcut/translate-page`。
+5. **Get Contents of URL**：Method 選 `POST`；Header 加入
+   `Authorization: Bearer <LOCAL_RANDOM_TOKEN>`；Request Body 選 `Form`，只建立一個欄位：
+
+   | Form key | Value |
+   | --- | --- |
+   | `payload` | 第 3 步取得的 `shortcut_payload` Text |
+
+   不要加入 `Content-Type` header；**Get Contents of URL** 會依 Form 自動設定
+   `application/x-www-form-urlencoded`。不要建立 Repeat、List 或六欄 JSON。
+6. **Get Dictionary Value**：從 API response 取得 key `renderer_payload`。只保留這一個
+   Base64URL Text；`summary` 可在除錯時以 **Quick Look** 查看，但不參與 renderer。
+7. 第二個 **Run JavaScript on Web Page**：webpage input 選 `Safari Page`，貼入完整
+   `apps/shortcut-client/dist/renderer-shortcut.iife.js`。在 script 中找到唯一標記：
+
+   ```text
+   __PENGUIN_RENDERER_PAYLOAD_MAGIC_VARIABLE__
+   ```
+
+   只把標記文字替換成第 6 步的 `renderer_payload` Magic Variable，保留標記外原有的半形
+   ASCII 雙引號。Base64URL 不含引號、反斜線或換行，因此不需要 JSON punctuation、
+   Combine Text、atob snippet 或手工 array brackets。
+8. 可選的 **Quick Look**：查看第二段 JavaScript completion，預期 `ok: true` 和
+   `rendered_regions`。正式計時時移除此動作。
+
+### Thin transport 錯誤碼
+
+- `401 LOCAL_API_TOKEN_INVALID`：Bearer token 不相同。
+- `413 SHORTCUT_FORM_TOO_LARGE`／`SHORTCUT_PAYLOAD_TOO_LARGE`：payload 超出固定上限。
+- `400 SHORTCUT_PAYLOAD_BASE64_INVALID`：Magic Variable 被改寫或不是完整 Text。
+- `400 SHORTCUT_PAYLOAD_JSON_INVALID`：解碼後不是 UTF-8 JSON。
+- `422 SHORTCUT_PAYLOAD_REQUEST_INVALID`：內容不符合現有 `TranslationPageRequest`。
+
+後端不會回傳 payload、圖片 URL、原文、譯文、Token 或 Key 到錯誤訊息與 log。真正 iPhone
+重測前，先要求 unit、Chromium extension 和 Playwright WebKit 全部 PASS。iPhone 只驗證
+Share Sheet 啟動、真實頁圖片、overlay 對齊、捲動／旋轉與總時間。

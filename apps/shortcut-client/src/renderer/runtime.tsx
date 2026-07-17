@@ -1,5 +1,6 @@
 import type { components } from "@penguin-translator/contracts";
 import { render } from "preact";
+import { decodeBase64UrlJson } from "../shared/base64url";
 import {
   CANCEL_REQUESTED_KEY,
   consumeControlRequests,
@@ -110,7 +111,7 @@ export function removeExisting(): void {
 
 export function mount(
   results: TranslationResult[],
-  options: { progress?: ProgressState; failures?: string[] } = {},
+  options: { progress?: ProgressState; failures?: string[]; timingLabel?: string } = {},
 ): MountResult {
   removeExisting();
 
@@ -257,6 +258,7 @@ export function mount(
           );
         }}
         progress={progress}
+        timingLabel={options.timingLabel}
       />,
       panelMount,
     );
@@ -299,6 +301,17 @@ export function runRenderer(input: unknown, complete: (result: unknown) => void)
       cancel_requested: controls.cancelRequested,
       retry_requested: controls.retryRequested,
     });
+  } catch (error) {
+    complete({ ok: false, version: VERSION, errors: [toShortcutError(error)] });
+  }
+}
+
+export function runRendererPayload(
+  rendererPayload: string,
+  complete: (result: unknown) => void,
+): void {
+  try {
+    runRenderer(decodeBase64UrlJson(rendererPayload), complete);
   } catch (error) {
     complete({ ok: false, version: VERSION, errors: [toShortcutError(error)] });
   }

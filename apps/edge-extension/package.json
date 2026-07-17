@@ -1,0 +1,14 @@
+{
+  "name": "@penguin-translator/edge-extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@penguin-translator/contracts": "workspace:*"
+  },
+  "scripts": {
+    "typecheck": "node ../shortcut-client/node_modules/typescript/bin/tsc --noEmit -p tsconfig.json",
+    "build": "node ../../scripts/build-edge-extension.mjs",
+    "watch": "node ../../scripts/watch-edge-extension.mjs"
+  }
+}

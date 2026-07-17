@@ -170,8 +170,14 @@ test("renderer bundle mounts a Shadow DOM panel and survives DOM image insertion
   expect(state.panelCount).toBe(1);
   expect(state.regionCount).toBe(1);
 
+  const firstPanelScreenshot = await page
+    .locator("#penguin-translator-control-host")
+    .screenshot({ animations: "disabled" });
   await page.addScriptTag({ path: resolve("dist/renderer.iife.js") });
-  await expect(page.locator("#penguin-translator-control-host")).toHaveCount(1);
+  const panel = page.locator("#penguin-translator-control-host");
+  await expect(panel).toHaveCount(1);
+  const repeatedPanelScreenshot = await panel.screenshot({ animations: "disabled" });
+  expect(repeatedPanelScreenshot.equals(firstPanelScreenshot)).toBe(true);
 });
 
 test("renderer bundle completes error and missing-image paths without drawing elsewhere", async ({
@@ -229,4 +235,95 @@ test("renderer bundle completes error and missing-image paths without drawing el
     warnings: ["IMAGE_NOT_FOUND:penguin-image-missing"],
   });
   await expect(page.locator("[data-penguin-translator-region]")).toHaveCount(0);
+});
+
+test("desktop harness extracts fixtures, calls the page API, and renders overlays", async ({
+  page,
+}) => {
+  await page.route("http://127.0.0.1:8000/v1/translate-page", async (route) => {
+    const cors = {
+      "Access-Control-Allow-Origin": "http://127.0.0.1:4173",
+      "Access-Control-Allow-Headers": "authorization,content-type",
+      "Access-Control-Allow-Methods": "POST,OPTIONS",
+    };
+    if (route.request().method() === "OPTIONS") {
+      await route.fulfill({ status: 204, headers: cors });
+      return;
+    }
+    const request = route.request().postDataJSON() as {
+      request_id: string;
+      images: Array<{
+        client_image_id: string;
+        rendered_width: number;
+        rendered_height: number;
+      }>;
+    };
+    const results = request.images.map((image, index) => ({
+      request_id: request.request_id,
+      client_image_id: image.client_image_id,
+      image_id: index.toString(16).padStart(64, "0"),
+      image_width: image.rendered_width,
+      image_height: image.rendered_height,
+      regions: [
+        {
+          region_id: `harness-${index}`,
+          polygon: [
+            [10, 10],
+            [100, 10],
+            [100, 80],
+            [10, 80],
+          ],
+          source_text: "테스트",
+          translated_text: "測試譯文",
+          orientation: "horizontal",
+          background_style: "opaque",
+          detection_confidence: 1,
+          recognition_confidence: 1,
+        },
+      ],
+      warnings: [],
+      timing: null,
+    }));
+    await route.fulfill({
+      status: 200,
+      headers: { ...cors, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        request_id: request.request_id,
+        results,
+        failures: [],
+        progress: {
+          total: results.length,
+          completed: results.length,
+          successful: results.length,
+          failed: 0,
+        },
+        warnings: [],
+        timing: {
+          total_ms: 12,
+          fetch_ms: 3,
+          ocr_ms: 4,
+          gemini_ms: 5,
+          queue_wait_ms: 0,
+          cold_start_ms: 0,
+          gemini_calls: 1,
+          ocr_cache_hits: 0,
+          warm_execution: true,
+        },
+      }),
+    });
+  });
+  await page.goto("http://127.0.0.1:4173/dev-harness/");
+  await page.locator("#fixture").selectOption("/test-page/");
+  await page.getByRole("button", { name: "1. Run extractor" }).click();
+  await expect(page.locator("#status")).toContainText("Extractor complete: 3 images");
+  await expect(page.locator("#extraction-output")).toContainText('"image_count": 3');
+  await page.locator("#api-token").fill("playwright-only-token");
+  await page.getByRole("button", { name: "2. Translate page" }).click();
+  await expect(page.locator("#status")).toContainText("3 successful, 0 failed, Gemini 1");
+  await expect(page.locator("#translation-output")).toContainText('"total_ms": 12');
+  await page.getByRole("button", { name: "3. Render overlays" }).click();
+  await expect(page.locator("#status")).toContainText('"ok":true');
+  await expect(
+    page.frameLocator("#fixture-frame").locator("[data-penguin-translator-region]"),
+  ).toHaveCount(3);
 });

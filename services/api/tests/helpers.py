@@ -18,6 +18,7 @@ def make_settings(**overrides: object) -> Settings:
         image_fetch_max_redirects=2,
         image_max_pixels=1_000_000,
         dev_allowed_image_targets=frozenset(),
+        dev_cors_origins=(),
         ocr_provider="paddleocr",
         paddleocr_language="korean",
         paddleocr_detection_model="PP-OCRv5_mobile_det",
@@ -30,5 +31,7 @@ def make_settings(**overrides: object) -> Settings:
         page_batch_max_images=30,
         gemini_batch_max_regions=80,
         gemini_batch_max_characters=12_000,
+        shortcut_form_max_bytes=350_000,
+        shortcut_payload_max_decoded_bytes=262_144,
     )
     return settings.model_copy(update=overrides)

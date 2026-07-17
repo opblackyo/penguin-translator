@@ -11,6 +11,8 @@
   },
   "scripts": {
     "build": "pnpm --filter @penguin-translator/shortcut-client build",
+    "extension:build": "node scripts/build-edge-extension.mjs",
+    "extension:watch": "node scripts/watch-edge-extension.mjs",
     "format": "biome check --write .",
     "format:check": "biome check .",
     "lint": "biome lint .",
@@ -18,6 +20,9 @@
     "test": "pnpm test:unit && pnpm backend:test && pnpm test:contract-roundtrip && pnpm contracts:check",
     "test:unit": "pnpm --filter @penguin-translator/shortcut-client test",
     "test:e2e": "pnpm --filter @penguin-translator/shortcut-client test:e2e",
+    "test:extension": "pnpm extension:build && pnpm --filter @penguin-translator/shortcut-client test:extension",
+    "dev:translator": "node scripts/dev-translator.mjs",
+    "test:translator": "pnpm format:check && pnpm lint && pnpm backend:format:check && pnpm backend:lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:extension && pnpm test:e2e && pnpm backend:benchmark:m2",
     "test:contract-roundtrip": "node scripts/test-extractor-contract.mjs",
     "test-page:lan": "pnpm --filter @penguin-translator/shortcut-client test-page:lan",
     "playwright:version": "pnpm --filter @penguin-translator/shortcut-client exec playwright --version",

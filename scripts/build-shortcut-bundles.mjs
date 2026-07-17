@@ -9,7 +9,7 @@ const { build } = await import(viteModule);
 
 await rm(resolve(client, "dist"), { recursive: true, force: true });
 
-for (const mode of ["extractor", "renderer"]) {
+for (const mode of ["extractor", "renderer", "renderer-shortcut"]) {
   await build({
     configFile: resolve(client, "vite.config.ts"),
     mode,

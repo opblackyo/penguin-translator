@@ -59,6 +59,8 @@ export interface ExtractionResult {
     target_language: "zh-Hant";
     reading_order: "auto";
   };
+  shortcut_payload: string;
+  payload_version: string;
   warnings: string[];
   control?: {
     retry_requested: string[];

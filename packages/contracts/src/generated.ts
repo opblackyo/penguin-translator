@@ -21,6 +21,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/shortcut/translate-page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Translate Page For Shortcut
+         * @description Decode a thin-Shortcut form request and reuse the page translation pipeline.
+         */
+        post: operations["translate_page_for_shortcut_v1_shortcut_translate_page_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/translate-image": {
         parameters: {
             query?: never;
@@ -116,6 +136,23 @@ export interface components {
              * @constant
              */
             source_kind: "url";
+        };
+        /** ShortcutTranslationResponse */
+        ShortcutTranslationResponse: {
+            /** Payload Version */
+            payload_version: string;
+            /** Renderer Payload */
+            renderer_payload: string;
+            summary: components["schemas"]["ShortcutTranslationSummary"];
+        };
+        /** ShortcutTranslationSummary */
+        ShortcutTranslationSummary: {
+            /** Failed */
+            failed: number;
+            /** Successful */
+            successful: number;
+            /** Total */
+            total: number;
         };
         /** TranslationImageRequest */
         TranslationImageRequest: {
@@ -349,6 +386,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    translate_page_for_shortcut_v1_shortcut_translate_page_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShortcutTranslationResponse"];
                 };
             };
         };

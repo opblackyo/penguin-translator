@@ -67,3 +67,17 @@ def test_allowed_targets_are_normalized_and_require_ports() -> None:
 
     with pytest.raises(ConfigurationError):
         Settings.from_environment(None, dev_allowed_image_targets="missing-port.example")
+
+
+def test_development_cors_origins_are_explicit_origins_only() -> None:
+    settings = Settings.from_environment(
+        None,
+        dev_cors_origins=" http://127.0.0.1:4173/,https://dev.example:4173 ",
+    )
+
+    assert settings.dev_cors_origins == (
+        "http://127.0.0.1:4173",
+        "https://dev.example:4173",
+    )
+    with pytest.raises(ConfigurationError):
+        Settings.from_environment(None, dev_cors_origins="https://example.com/path")

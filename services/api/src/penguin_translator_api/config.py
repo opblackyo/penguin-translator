@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     image_fetch_max_redirects: int = Field(default=3, gt=0)
     image_max_pixels: int = Field(default=40_000_000, gt=0)
     dev_allowed_image_targets: Annotated[frozenset[str], NoDecode] = frozenset()
+    dev_cors_origins: Annotated[tuple[str, ...], NoDecode] = ()
     ocr_provider: str = "paddleocr"
     paddleocr_language: str = "korean"
     paddleocr_detection_model: str = "PP-OCRv5_mobile_det"
@@ -50,6 +51,8 @@ class Settings(BaseSettings):
     page_batch_max_images: int = Field(default=30, ge=1, le=50)
     gemini_batch_max_regions: int = Field(default=80, ge=1, le=200)
     gemini_batch_max_characters: int = Field(default=12_000, ge=100, le=50_000)
+    shortcut_form_max_bytes: int = Field(default=350_000, ge=1_024, le=1_000_000)
+    shortcut_payload_max_decoded_bytes: int = Field(default=262_144, ge=1_024, le=750_000)
 
     @field_validator("dev_allowed_image_targets", mode="before")
     @classmethod
@@ -71,6 +74,28 @@ class Settings(BaseSettings):
                 targets.add(f"{hostname}:{port}")
             return frozenset(targets)
         return value
+
+    @field_validator("dev_cors_origins", mode="before")
+    @classmethod
+    def _parse_dev_cors_origins(cls, value: Any) -> Any:
+        if not isinstance(value, str):
+            return value
+        origins: list[str] = []
+        for raw_origin in value.split(","):
+            origin = raw_origin.strip().rstrip("/")
+            if not origin:
+                continue
+            parsed = urlsplit(origin)
+            if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+                raise ValueError("Development CORS origins must be HTTP(S) origins")
+            try:
+                _ = parsed.port
+            except ValueError as error:
+                raise ValueError("Development CORS origins have an invalid port") from error
+            if parsed.path or parsed.query or parsed.fragment or parsed.username or parsed.password:
+                raise ValueError("Development CORS origins cannot include paths or credentials")
+            origins.append(origin)
+        return tuple(dict.fromkeys(origins))
 
     @field_validator("paddle_pdx_cache_home", mode="after")
     @classmethod

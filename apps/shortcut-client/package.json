@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
     "test:e2e": "playwright test",
+    "test:extension": "playwright test --config playwright.extension.config.ts",
     "test-page:lan": "vite --host 0.0.0.0 --port 4173 --strictPort"
   },
   "dependencies": {

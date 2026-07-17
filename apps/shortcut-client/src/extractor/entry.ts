@@ -1,5 +1,7 @@
+import { encodeBase64UrlJson, SHORTCUT_PAYLOAD_VERSION } from "../shared/base64url";
 import { consumeControlRequests } from "../shared/control-requests";
 import { toShortcutError } from "../shared/errors";
+import { createRequestId } from "../shared/request-id";
 import { VERSION } from "../shared/version";
 import { collectPageImagesWithDiagnostics, type ExtractionResult } from "./collect-images";
 
@@ -13,24 +15,6 @@ export function isDebugModeEnabled(): boolean {
   );
 }
 
-export function createRequestId(): string {
-  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
-  const bytes = new Uint8Array(16);
-  if (typeof crypto.getRandomValues === "function") {
-    crypto.getRandomValues(bytes);
-  } else {
-    for (let index = 0; index < bytes.length; index += 1) {
-      bytes[index] = Math.floor(Math.random() * 256);
-    }
-  }
-  bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40;
-  bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80;
-  const hex = [...bytes].map((value) => value.toString(16).padStart(2, "0"));
-  return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex
-    .slice(6, 8)
-    .join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10).join("")}`;
-}
-
 async function run(): Promise<void> {
   try {
     const collection = await collectPageImagesWithDiagnostics();
@@ -42,18 +26,21 @@ async function run(): Promise<void> {
     if (retryIds.size) {
       collection.warnings.push("RETRY_FAILURES_REQUESTED");
     }
+    const batchRequest = {
+      request_id: createRequestId(),
+      page_url: window.location.href,
+      images,
+      source_language: "auto" as const,
+      target_language: "zh-Hant" as const,
+      reading_order: "auto" as const,
+    };
     const result: ExtractionResult = {
       version: VERSION,
       page_url: window.location.href,
       images,
-      batch_request: {
-        request_id: createRequestId(),
-        page_url: window.location.href,
-        images,
-        source_language: "auto",
-        target_language: "zh-Hant",
-        reading_order: "auto",
-      },
+      batch_request: batchRequest,
+      shortcut_payload: encodeBase64UrlJson(batchRequest),
+      payload_version: SHORTCUT_PAYLOAD_VERSION,
       warnings: collection.warnings,
     };
     if (retryIds.size) {

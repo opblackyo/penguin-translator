@@ -68,6 +68,50 @@
         "title": "ImageSource",
         "type": "object"
       },
+      "ShortcutTranslationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "payload_version": {
+            "minLength": 1,
+            "title": "Payload Version",
+            "type": "string"
+          },
+          "renderer_payload": {
+            "minLength": 1,
+            "title": "Renderer Payload",
+            "type": "string"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/ShortcutTranslationSummary"
+          }
+        },
+        "required": ["renderer_payload", "payload_version", "summary"],
+        "title": "ShortcutTranslationResponse",
+        "type": "object"
+      },
+      "ShortcutTranslationSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "failed": {
+            "minimum": 0.0,
+            "title": "Failed",
+            "type": "integer"
+          },
+          "successful": {
+            "minimum": 0.0,
+            "title": "Successful",
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": ["total", "successful", "failed"],
+        "title": "ShortcutTranslationSummary",
+        "type": "object"
+      },
       "TranslationImageRequest": {
         "additionalProperties": false,
         "properties": {
@@ -584,9 +628,9 @@
     }
   },
   "info": {
-    "summary": "Private-LAN manga translation with M0 compatibility and M2.1 page batching",
+    "summary": "Private-LAN manga translation with M0 compatibility and M2.2 thin transports",
     "title": "Penguin Translator API",
-    "version": "0.3.0-m2.1"
+    "version": "0.3.0-m2.2"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -607,6 +651,31 @@
         },
         "summary": "Healthz",
         "tags": ["health"]
+      }
+    },
+    "/v1/shortcut/translate-page": {
+      "post": {
+        "description": "Decode a thin-Shortcut form request and reuse the page translation pipeline.",
+        "operationId": "translate_page_for_shortcut_v1_shortcut_translate_page_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShortcutTranslationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Translate Page For Shortcut",
+        "tags": ["translation"]
       }
     },
     "/v1/translate-image": {

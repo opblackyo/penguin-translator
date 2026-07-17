@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Penguin Translator Developer Harness</title>
+    <style>
+      body { margin: 0; font: 15px/1.5 system-ui; color: #0f172a; background: #f8fafc; }
+      main { display: grid; grid-template-columns: minmax(320px, 430px) 1fr; gap: 16px; padding: 16px; }
+      section { padding: 16px; border: 1px solid #cbd5e1; border-radius: 10px; background: white; }
+      .controls { display: grid; gap: 12px; align-content: start; }
+      label { display: grid; gap: 4px; font-weight: 600; }
+      input, select, button { box-sizing: border-box; width: 100%; padding: 8px; font: inherit; }
+      button { border: 0; border-radius: 6px; background: #0f172a; color: white; }
+      button.secondary { background: #475569; }
+      pre { max-height: 260px; overflow: auto; padding: 10px; background: #f1f5f9; white-space: pre-wrap; }
+      iframe { width: 100%; min-height: 76vh; border: 1px solid #94a3b8; background: white; }
+      output { display: block; min-height: 1.5em; font-weight: 600; }
+      @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="controls">
+        <h1>企鵝翻譯機 Dev Harness</h1>
+        <p>只允許 Repository 自製 fixtures；Token 不會儲存或出現在 diagnostic export。</p>
+        <label>Fixture
+          <select id="fixture">
+            <option value="/test-page/">M0 multi-image</option>
+            <option value="/m1-test-page/">M1 OCR fixtures</option>
+            <option value="/m2-test-page/" selected>M2 long page</option>
+          </select>
+        </label>
+        <label>API Endpoint <input id="api-endpoint" type="url" required /></label>
+        <label>Local API Token <input id="api-token" type="password" autocomplete="off" required /></label>
+        <button id="extract" type="button">1. Run extractor</button>
+        <button id="translate" type="button">2. Translate page</button>
+        <button id="render" type="button">3. Render overlays</button>
+        <button id="export" class="secondary" type="button">Export sanitized diagnostics</button>
+        <output id="status"></output>
+        <h2>Extraction / semantic request</h2>
+        <pre id="extraction-output">Not run</pre>
+        <h2>Results / timing</h2>
+        <pre id="translation-output">Not run</pre>
+      </section>
+      <section><iframe id="fixture-frame" title="Self-created translation fixture"></iframe></section>
+    </main>
+    <script type="module" src="/src/dev-harness/main.ts"></script>
+  </body>
+</html>

@@ -94,3 +94,19 @@ class TranslationWarmupResponse(BaseModel):
     ready: bool
     initialization_ms: float = Field(ge=0)
     diagnostic: str | None = None
+
+
+class ShortcutTranslationSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    total: NonNegativeInt
+    successful: NonNegativeInt
+    failed: NonNegativeInt
+
+
+class ShortcutTranslationResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    renderer_payload: str = Field(min_length=1)
+    payload_version: str = Field(min_length=1)
+    summary: ShortcutTranslationSummary

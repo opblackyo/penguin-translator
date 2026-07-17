@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { createServer, type ViteDevServer } from "vite";
 
 const TEST_PAGE_URL = "http://127.0.0.1:4173/test-page/";
-const HEALTH_URL = "http://127.0.0.1:8000/healthz";
+const HEALTH_URL = "http://127.0.0.1:8001/healthz";
 
 function delay(milliseconds: number): Promise<void> {
   return new Promise((resolveDelay) => setTimeout(resolveDelay, milliseconds));
@@ -56,7 +56,7 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   );
   const api = spawn(
     apiPython,
-    ["-m", "uvicorn", "penguin_translator_api.main:app", "--host", "127.0.0.1", "--port", "8000"],
+    ["-m", "uvicorn", "penguin_translator_api.main:app", "--host", "127.0.0.1", "--port", "8001"],
     {
       cwd: apiDirectory,
       env: { ...process.env, PENGUIN_TRANSLATOR_LOCAL_API_TOKEN: "playwright-local-token" },
