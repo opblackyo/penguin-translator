@@ -18,6 +18,7 @@ await runOnce("build");
 await runOnce("extension:build");
 
 const scripts = ["backend:dev:lan", "test-page:lan", "extension:watch"];
+scripts.push("userscript:watch");
 const children = scripts.map((script, index) =>
   spawn(pnpm, [script], {
     stdio: "inherit",

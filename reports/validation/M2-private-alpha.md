@@ -79,12 +79,17 @@ M2.2 Chromium Unpacked Extension Evidence: PASS
 M2.2 WebKit Adapter Round-Trip Evidence: PASS
 M2.2 Desktop Harness Evidence: PASS
 M2.2 Thin iPhone Shortcut Evidence: UNVERIFIED
-Final Status: READY_FOR_THIN_SHORTCUT_RETEST
+M2.3 Userscript Unit Evidence: PASS
+M2.3 Userscript WebKit Evidence: PASS
+M2.3 iPhone Userscripts Install Evidence: UNVERIFIED
+M2.3 Private-Site Metadata Match: OWNER_APPROVED_EXACT_ORIGIN
+Final Status: READY_FOR_IOS_USERSCRIPT_INSTALL
 ```
 
-The complete automated gate covers 51 frontend unit tests, 68 backend tests, one Chromium
-unpacked-extension scenario, 12 Playwright WebKit scenarios, generated-contract verification,
-static typing, formatting, lint, production bundles, and the deterministic M2 batch benchmark.
+The complete automated gate covers 51 Shortcut/renderer unit tests, six userscript unit tests, 68
+backend tests, one Chromium unpacked-extension scenario, 13 Playwright WebKit scenarios,
+generated-contract verification, static typing, formatting, lint, production bundles, and the
+deterministic M2 batch benchmark.
 The WebKit suite exercises the self-created M2 long page and keeps the M0/M1 and partial-failure
 paths passing. No Gemini request or model download is part of the general gate.
 
@@ -143,12 +148,12 @@ The opt-in deterministic benchmark models a self-created 15-image equivalent wor
 network, commercial content, Paddle model downloads, or Gemini calls. Three-run medians recorded:
 
 ```text
-sequential cold: 909.5 ms
-sequential warm: 470.6 ms
-batch concurrency 2 cold: 380.7 ms (58.1% improvement)
-batch concurrency 2 warm: 129.1 ms (72.6% improvement)
-batch concurrency 3 cold: 275.5 ms (69.7% improvement)
-batch concurrency 3 warm: 102.2 ms (78.3% improvement)
+sequential cold: 1009.0 ms
+sequential warm: 475.6 ms
+batch concurrency 2 cold: 371.1 ms (63.2% improvement)
+batch concurrency 2 warm: 124.5 ms (73.8% improvement)
+batch concurrency 3 cold: 269.8 ms (73.3% improvement)
+batch concurrency 3 warm: 100.2 ms (78.9% improvement)
 ```
 
 This passes the 50% scheduling benchmark gate but is not a physical latency claim. The Owner must
@@ -175,3 +180,28 @@ Automated Chromium verifies the actual unpacked Manifest V3 flow; WebKit verifie
 partial failure. The iPhone is the final physical gate only. The thin iOS 26.5 Shortcut, real-page
 overlay alignment, rotation/scroll behavior, and physical timing remain `UNVERIFIED`; compatibility
 with commercial sites remains site-specific, and public deployment is not authorized.
+
+## M2.3 iOS Safari Userscript shell
+
+M2.3 stops further Shortcut development. The M0–M2.2 Shortcut bundles, adapter, and evidence remain
+in the repository for regression history, but the Owner is not asked to modify or retest that flow.
+The active iPhone shell is now one installable `penguin-translator.user.js` bundle for the open-source
+Userscripts Safari extension.
+
+The script reuses the same bounded extractor and renderer source as the Edge development extension.
+It mounts one page-side launcher, stores endpoint/token/target only through the granted asynchronous
+GM storage APIs, sends one authenticated JSON page request through `GM.xmlHttpRequest`, and mounts
+the existing overlay/control panel. It supports safe status text, isolated partial failures, failed
+image retry, settings update/reset, and repeated injection without duplicate launchers or renderer
+panels. It does not use the Shortcut adapter or Base64URL transport.
+
+Automated evidence covers metadata and filename validity, no remote `@require`, no bundled token or
+fixed private LAN IP, GM storage lifecycle, a Unicode 15-image array, safe HTTP/malformed-response
+errors, partial failure, strict-CSP WebKit execution, settings update, retry-only requests, shared
+extractor/renderer code, and repeated bundle injection. The committed metadata matches self-created
+LAN fixture paths plus the exact Owner-approved `https://omegascans.org/*` origin. It does not include
+a subdomain wildcard or expand to `https://*/*`; any future hostname requires separate approval.
+
+Physical installation, Safari site permission, real-page extraction/overlay, scroll/orientation,
+and real timing remain `UNVERIFIED`. Public deployment, access-control bypass, and extension-store
+distribution remain unauthorized.

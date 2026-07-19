@@ -1,0 +1,21 @@
+{
+  "name": "@penguin-translator/userscript",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@penguin-translator/contracts": "workspace:*"
+  },
+  "scripts": {
+    "build": "node ../../scripts/build-userscript.mjs",
+    "test": "vitest run --config vitest.config.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "watch": "node ../../scripts/watch-userscript.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "jsdom": "29.1.1",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  }
+}

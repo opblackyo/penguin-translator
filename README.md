@@ -24,6 +24,12 @@ M2.2 將 iOS Shortcut 縮成單一 Base64URL form transport，後端 adapter 負
 驗證並直接重用 M2.1 page pipeline。主要開發殼層改為私人 Edge Manifest V3 unpacked
 extension 與 Windows dev harness；iPhone 僅保留最後實機 Gate。這不授權公開部署或商店上架。
 
+M2.3 停止把 iOS Shortcut 當成正式手機 shell，保留 M0–M2.2 文件與 adapter 作為歷史證據。
+iPhone Safari 改用單一、自包含的 Userscripts script：頁面浮動按鈕直接共用 extractor 與
+renderer，並以 `GM.xmlHttpRequest` 呼叫整頁 batch API。Endpoint／token 只存於 Userscripts
+本機 storage；metadata 不預設匹配所有網站。安裝與權限步驟見
+[`docs/ios-userscript-setup.md`](docs/ios-userscript-setup.md)。
+
 ## 技術組合
 
 - 注入式前端：TypeScript、Preact、Vite Library Mode、Shadow DOM
@@ -46,6 +52,8 @@ pnpm test
 pnpm build
 pnpm backend:benchmark:m2
 pnpm extension:build
+pnpm userscript:build
+pnpm userscript:test
 pnpm test:translator
 ```
 
@@ -78,7 +86,8 @@ Mock API 使用 repository script 明確設定的 `8000` port，自拍 SVG 測�
 `http://127.0.0.1:4173/dev-harness/`。Edge unpacked build 與最小權限設定見
 [`docs/edge-development-extension.md`](docs/edge-development-extension.md)。M2.1 手工 nested
 JSON Shortcut 已 deprecated；新的 iPhone 流程只傳 `shortcut_payload` 與
-`renderer_payload` 兩個純文字欄位。
+`renderer_payload` 兩個純文字欄位。M2.3 起這個 thin Shortcut 也只保留為歷史 fallback；
+Owner 不需再修改或測試它，正式 iPhone Gate 改用 Userscripts。
 
 ## M0 限制
 

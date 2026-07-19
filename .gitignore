@@ -1,5 +1,7 @@
 node_modules/
 dist/
+!apps/userscript/dist/
+!apps/userscript/dist/penguin-translator.user.js
 coverage/
 playwright-report/
 blob-report/
